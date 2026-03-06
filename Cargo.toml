@@ -38,3 +38,5 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # Testing
 assert_cmd = "2.0"
 predicates = "3.0"
+test-r = { version = "3", default-features = false }
+goldenfile = "1"
