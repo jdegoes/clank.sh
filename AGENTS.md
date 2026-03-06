@@ -43,7 +43,8 @@ Every new feature or bug fix must be accompanied by tests. Choose the appropriat
 
 - **Unit test** — pure logic, error types, anything not requiring the public API boundary.
 - **Integration test** (`crate/tests/`) — behaviour through the public API of a single crate.
-- **End-to-end test** (`clank-shell/tests/acceptance.rs`) — binary-level: exit codes, stdout/stderr.
+- **End-to-end test** (`clank-shell/tests/golden/`) — binary-level: add a directory with a `stdin`
+  file; run `UPDATE_GOLDENFILES=1 cargo test --test golden` to capture expected output.
 
 Prefer a lower layer (unit > integration > e2e) for speed and isolation.
 See `dev-docs/testing.md` for full testing structure, `MockHttpClient` usage, and known limitations.
