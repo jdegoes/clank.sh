@@ -16,3 +16,6 @@ tracing = { workspace = true }
 brush-core = { workspace = true }
 brush-parser = { workspace = true }
 brush-builtins = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }

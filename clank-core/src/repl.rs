@@ -13,8 +13,14 @@ use anyhow::Result;
 
 /// A minimal REPL that drives a `brush_core::Shell`.
 ///
-/// Reads lines from `stdin`, executes each as a shell command, and writes
-/// output to `stdout` / `stderr` via the normal process streams.
+/// Reads lines from a `BufRead` source, executes each as a shell command, and
+/// writes the prompt to a `Write` sink. Output from commands flows through the
+/// normal process streams (stdout/stderr) since brush-core owns them directly.
+///
+/// The injectable I/O (`input` / `prompt_out`) is for the REPL control channel
+/// only — reading the next command and writing the prompt. This separation
+/// means tests can drive the REPL with in-memory buffers while still
+/// capturing command output via `std::process::Command` at the binary level.
 ///
 /// # Note on `exit`
 ///
@@ -48,31 +54,25 @@ impl Repl {
 
     /// Run the REPL until EOF or `exit`.
     ///
-    /// Reads from `stdin` line-by-line. Each non-empty line is executed as a
-    /// shell command via `brush_core::Shell::run_string`.
-    pub async fn run(&mut self) -> Result<()> {
-        use std::io::{self, BufRead, Write};
+    /// - `input`: source of command lines (e.g. `io::stdin().lock()` or a
+    ///   `Cursor<&[u8]>` in tests).
+    /// - `prompt_out`: destination for the `$ ` prompt (e.g. `io::stdout()`
+    ///   or a `Vec<u8>` in tests).
+    ///
+    /// Each non-empty line read from `input` is executed via
+    /// `brush_core::Shell::run_string`. Execution errors are printed to
+    /// stderr.
+    pub async fn run(
+        &mut self,
+        input: impl std::io::BufRead,
+        mut prompt_out: impl std::io::Write,
+    ) -> Result<()> {
+        for line in input.lines() {
+            write!(prompt_out, "$ ")?;
+            prompt_out.flush()?;
 
-        let stdin = io::stdin();
-        let stdout = io::stdout();
-
-        loop {
-            // Print prompt to stdout (no transcript yet — that is a future task).
-            {
-                let mut out = stdout.lock();
-                write!(out, "$ ")?;
-                out.flush()?;
-            }
-
-            let mut line = String::new();
-            let bytes_read = stdin.lock().read_line(&mut line)?;
-
-            // EOF
-            if bytes_read == 0 {
-                break;
-            }
-
-            let trimmed = line.trim_end_matches('\n').trim_end_matches('\r');
+            let line = line?;
+            let trimmed = line.trim();
             if trimmed.is_empty() {
                 continue;
             }
@@ -84,7 +84,6 @@ impl Repl {
             match self.shell.run_string(trimmed, &params).await {
                 Ok(_result) => {}
                 Err(err) => {
-                    // Print errors to stderr, matching shell convention.
                     eprintln!("clank: {err}");
                 }
             }
@@ -114,7 +113,11 @@ impl Repl {
         Ok(Self)
     }
 
-    pub async fn run(&mut self) -> anyhow::Result<()> {
+    pub async fn run(
+        &mut self,
+        _input: impl std::io::BufRead,
+        _prompt_out: impl std::io::Write,
+    ) -> anyhow::Result<()> {
         eprintln!("clank: shell interpreter not yet implemented for wasm32 target");
         Ok(())
     }

@@ -17,6 +17,8 @@ async fn main() -> Result<()> {
         .init();
 
     let mut repl = Repl::new().await?;
-    repl.run().await?;
+    let stdin = std::io::stdin();
+    let stdout = std::io::stdout();
+    repl.run(stdin.lock(), stdout).await?;
     Ok(())
 }
