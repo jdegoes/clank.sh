@@ -5,5 +5,10 @@
 //! implemented (see the open issue for the WASM process model).
 
 pub mod repl;
+pub mod transcript;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) mod tee;
 
 pub use repl::Repl;
+pub use transcript::{Entry, EntryKind, Transcript};
