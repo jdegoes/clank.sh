@@ -44,10 +44,9 @@ impl MockHttpClient {
 #[async_trait]
 impl HttpClient for MockHttpClient {
     async fn get(&self, url: &str) -> Result<HttpResponse, HttpError> {
-        self.calls
-            .lock()
-            .unwrap()
-            .push(RecordedCall::Get { url: url.to_string() });
+        self.calls.lock().unwrap().push(RecordedCall::Get {
+            url: url.to_string(),
+        });
         Ok(HttpResponse {
             status: self.response.status,
             body: self.response.body.clone(),

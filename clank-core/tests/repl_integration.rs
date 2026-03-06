@@ -7,9 +7,9 @@
 mod native {
     use clank_core::transcript::EntryKind;
     use clank_core::Repl;
+    use clank_core::Transcript;
     use std::io::Cursor;
     use std::sync::{Arc, Mutex};
-    use clank_core::Transcript;
 
     /// Run the REPL with the given script, discarding prompt output.
     async fn run_script(script: &str) -> anyhow::Result<()> {
@@ -20,9 +20,7 @@ mod native {
     }
 
     /// Run the REPL and return the transcript.
-    async fn run_with_transcript(
-        script: &str,
-    ) -> anyhow::Result<Arc<Mutex<Transcript>>> {
+    async fn run_with_transcript(script: &str) -> anyhow::Result<Arc<Mutex<Transcript>>> {
         let transcript = Arc::new(Mutex::new(Transcript::default_budget()));
         let mut repl = Repl::with_transcript(Arc::clone(&transcript)).await?;
         let input = Cursor::new(script.to_string());

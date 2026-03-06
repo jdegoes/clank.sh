@@ -20,6 +20,14 @@ cargo check               # check without producing artifacts (faster)
 cargo build --release     # release binary → target/release/clank
 ```
 
+### Formatting and linting
+
+```bash
+cargo fmt                 # format all code (run before committing)
+cargo fmt --check         # check formatting without modifying files
+cargo clippy              # lint all crates; must produce zero warnings
+```
+
 **Dependency notes:**
 - `reqwest` uses `rustls-tls` — no OpenSSL system dependency required.
 - `brush-core` and its dependencies are native-only; do not attempt `cargo build --target wasm32-wasip2`.
@@ -30,14 +38,16 @@ A task is complete when ALL of the following pass without errors or warnings:
 
 1. `cargo build` exits 0
 2. `cargo test` exits 0 with no failures
-3. All acceptance tests from the plan pass
-4. No new `#[allow(...)]` suppressions introduced without a comment explaining why
+3. `cargo fmt --check` exits 0
+4. `cargo clippy` exits 0 with no warnings
+5. All acceptance tests from the plan pass
+6. No new `#[allow(...)]` suppressions introduced without a comment explaining why
 
 Report completion only after running these checks. Do not report done speculatively.
 
 ### Acceptance bar
 
-All PRs must pass `cargo build` and `cargo test` with zero failures and zero new warnings.
+All PRs must pass `cargo build`, `cargo test`, `cargo fmt --check`, and `cargo clippy` with zero failures and zero warnings.
 
 Every new feature or bug fix must be accompanied by tests. Choose the appropriate layer:
 
@@ -61,7 +71,7 @@ Agents write; humans gate moves into `approved/` and `done/`. Approved documents
 
 ### Always do
 
-- Run `cargo build` and `cargo test` before reporting a task complete.
+- Run `cargo build`, `cargo test`, `cargo fmt --check`, and `cargo clippy` before reporting a task complete.
 - Add tests for every new feature or bug fix (see Acceptance bar).
 - Record deviations from an approved plan inline in the plan as they occur.
 - Use `rustls-tls` for any new HTTP dependencies — never introduce an OpenSSL system dependency.
@@ -93,6 +103,8 @@ wait for the human to decide next steps before continuing.
 
 - **`cargo build` or `cargo test` fails after a fix attempt:** Report the full compiler/test output
   and stop. Do not delete files, comment out tests, or add `#[allow(...)]` to silence errors.
+- **`cargo clippy` warns after a fix attempt:** Report the warning and stop. Do not add
+  `#[allow(...)]` to silence it — fix the underlying code.
 - **An approved plan turns out to be wrong or incomplete mid-implementation:** Stop immediately.
   Explain the discrepancy and what options are available. Wait for the human to decide whether
   to file a new issue, amend the plan, or take another course of action.

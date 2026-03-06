@@ -42,10 +42,7 @@ impl Repl {
     /// Create a new `Repl` with a default `brush-core` shell configuration
     /// and a fresh transcript (default token budget).
     pub async fn new() -> Result<Self> {
-        Ok(Self::with_transcript(
-            Arc::new(Mutex::new(Transcript::default_budget())),
-        )
-        .await?)
+        Self::with_transcript(Arc::new(Mutex::new(Transcript::default_budget()))).await
     }
 
     /// Create a new `Repl` sharing the given transcript. Useful in tests that
@@ -85,8 +82,8 @@ impl Repl {
         input: impl std::io::BufRead,
         mut prompt_out: impl std::io::Write,
     ) -> Result<()> {
+        use crate::tee::{capture_stderr, capture_stdout};
         use brush_core::openfiles::{OpenFile, OpenFiles};
-        use crate::tee::{capture_stdout, capture_stderr};
 
         for line in input.lines() {
             write!(prompt_out, "$ ")?;
@@ -172,9 +169,7 @@ impl Repl {
         Ok(Self)
     }
 
-    pub fn transcript(
-        &self,
-    ) -> std::sync::Arc<std::sync::Mutex<crate::transcript::Transcript>> {
+    pub fn transcript(&self) -> std::sync::Arc<std::sync::Mutex<crate::transcript::Transcript>> {
         std::sync::Arc::new(std::sync::Mutex::new(
             crate::transcript::Transcript::default_budget(),
         ))
