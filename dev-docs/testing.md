@@ -32,7 +32,21 @@ clank-shell/tests/golden/
     stdin       — input fed verbatim to clank's stdin (required; hand-authored)
     stdout      — expected stdout (golden file; auto-updatable)
     exit_code   — expected exit code as a plain integer string (golden file; auto-updatable)
+    transcript  — expected session transcript as JSON (golden file; auto-updatable)
 ```
+
+The `transcript` file is a JSON array of `{"kind": "...", "text": "..."}` objects, one per
+transcript entry. The binary writes it via `--dump-transcript <path>` when invoked by the test
+harness. Example:
+
+```json
+[
+  { "kind": "input",  "text": "echo hello" },
+  { "kind": "output", "text": "hello\n"    }
+]
+```
+
+Valid `kind` values: `input`, `output`, `error`, `ai_response`, `summary`.
 
 Each case appears as a distinct named test in `cargo test` output
 (e.g. `golden::golden::echo_hello ... ok`), registered at runtime by `test-r`'s `#[test_gen]`.

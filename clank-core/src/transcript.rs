@@ -20,7 +20,8 @@
 //! layer when `ask` is implemented.
 
 /// The kind of a transcript entry.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum EntryKind {
     /// A line typed by the user.
     Input,
@@ -48,7 +49,7 @@ impl EntryKind {
 }
 
 /// A single entry in the transcript.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct Entry {
     pub kind: EntryKind,
     pub text: String,
@@ -64,9 +65,14 @@ impl Entry {
 /// The shell's sliding-window transcript.
 ///
 /// See module-level documentation for the design.
+///
+/// `session_start` marks the index of the first entry added in the current
+/// session. Entries before this index were loaded from a prior session.
+/// [`session_entries`](Transcript::session_entries) returns only the new ones.
 pub struct Transcript {
     entries: Vec<Entry>,
     max_tokens: usize,
+    session_start: usize,
 }
 
 /// Fraction of `max_tokens` to target after compaction (75 %).
@@ -78,12 +84,34 @@ impl Transcript {
         Self {
             entries: Vec::new(),
             max_tokens,
+            session_start: 0,
         }
     }
 
     /// Create a new transcript with the default token budget (8 000 tokens).
     pub fn default_budget() -> Self {
         Self::new(8_000)
+    }
+
+    /// Mark the current end of the transcript as the start of a new session.
+    ///
+    /// Call this when attaching a `Repl` to a transcript that was pre-loaded
+    /// from a prior session, so that [`session_entries`](Self::session_entries)
+    /// returns only the entries added in the current session.
+    pub fn mark_session_start(&mut self) {
+        self.session_start = self.entries.len();
+    }
+
+    /// Return only the entries added since the session started.
+    pub fn session_entries(&self) -> &[Entry] {
+        let start = self.session_start.min(self.entries.len());
+        &self.entries[start..]
+    }
+
+    /// Serialize only the session entries to a pretty-printed JSON string.
+    pub fn session_to_json(&self) -> String {
+        serde_json::to_string_pretty(self.session_entries())
+            .expect("Transcript serialization should never fail")
     }
 
     /// Append an entry. If the budget is exceeded after appending, the leading
@@ -142,6 +170,12 @@ impl Transcript {
             out.push('\n');
         }
         out
+    }
+
+    /// Serialize all transcript entries to a pretty-printed JSON string.
+    pub fn to_json(&self) -> String {
+        serde_json::to_string_pretty(&self.entries)
+            .expect("Transcript serialization should never fail")
     }
 
     // -----------------------------------------------------------------------

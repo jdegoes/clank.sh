@@ -1,0 +1,10 @@
+[
+  {
+    "kind": "input",
+    "text": "echo hello | cat"
+  },
+  {
+    "kind": "output",
+    "text": "hello\n"
+  }
+]

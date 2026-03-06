@@ -1,0 +1,6 @@
+[
+  {
+    "kind": "input",
+    "text": "false && echo yes"
+  }
+]

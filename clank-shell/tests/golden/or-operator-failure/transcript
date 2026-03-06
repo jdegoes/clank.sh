@@ -1,0 +1,10 @@
+[
+  {
+    "kind": "input",
+    "text": "false || echo fallback"
+  },
+  {
+    "kind": "output",
+    "text": "fallback\n"
+  }
+]

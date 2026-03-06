@@ -6,6 +6,7 @@
 //!     stdin       — input fed verbatim to clank's stdin (required; hand-authored)
 //!     stdout      — expected stdout (golden file; auto-updatable)
 //!     exit_code   — expected exit code as a plain integer string (golden file; auto-updatable)
+//!     transcript  — expected transcript as JSON (golden file; auto-updatable)
 //!
 //! To update golden files after an intentional behaviour change:
 //!
@@ -14,7 +15,8 @@
 //! Then review `git diff tests/golden/` and commit the changes.
 //!
 //! To add a new case, create a new directory with a `stdin` file and run the
-//! update command above — `stdout` and `exit_code` will be populated automatically.
+//! update command above — `stdout`, `exit_code`, and `transcript` will be
+//! populated automatically.
 
 use goldenfile::Mint;
 use std::io::Write as _;
@@ -40,8 +42,9 @@ fn golden_dir() -> std::path::PathBuf {
 /// Run a single golden test case.
 ///
 /// 1. Read `stdin` from the case directory.
-/// 2. Invoke the `clank` binary with that stdin.
-/// 3. Write actual stdout and exit code to a `goldenfile::Mint`.
+/// 2. Invoke the `clank` binary with that stdin, passing `--dump-transcript`
+///    to write the session transcript to a temp file.
+/// 3. Write actual stdout, exit code, and transcript to a `goldenfile::Mint`.
 ///    The mint diffs against the checked-in golden files on drop.
 fn run_case(case_dir: &Path) {
     let stdin_path = case_dir.join("stdin");
@@ -54,8 +57,14 @@ fn run_case(case_dir: &Path) {
     let stdin_content = std::fs::read(&stdin_path)
         .unwrap_or_else(|e| panic!("Failed to read {:?}: {e}", stdin_path));
 
+    // Temp file for the transcript dump.
+    let transcript_tmp =
+        tempfile::NamedTempFile::new().expect("Failed to create temp file for transcript");
+
     // Run the binary.
     let output = Command::new(clank_bin())
+        .arg("--dump-transcript")
+        .arg(transcript_tmp.path())
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::null()) // stderr is diagnostic; not part of the contract
@@ -68,6 +77,8 @@ fn run_case(case_dir: &Path) {
 
     let actual_stdout = String::from_utf8_lossy(&output.stdout).into_owned();
     let actual_exit_code = output.status.code().unwrap_or(-1).to_string();
+    let actual_transcript =
+        std::fs::read_to_string(transcript_tmp.path()).unwrap_or_else(|_| "[]".to_string());
 
     // Compare (or update) golden files via goldenfile::Mint.
     let mut mint = Mint::new(case_dir);
@@ -81,6 +92,11 @@ fn run_case(case_dir: &Path) {
         .new_goldenfile("exit_code")
         .unwrap_or_else(|e| panic!("Failed to open golden exit_code for {:?}: {e}", case_dir));
     writeln!(exit_code_file, "{actual_exit_code}").unwrap();
+
+    let mut transcript_file = mint
+        .new_goldenfile("transcript")
+        .unwrap_or_else(|e| panic!("Failed to open golden transcript for {:?}: {e}", case_dir));
+    write!(transcript_file, "{actual_transcript}").unwrap();
 
     // Mint::drop performs the diff. If UPDATE_GOLDENFILES=1 is set it writes
     // instead. Either way, nothing more to do here.

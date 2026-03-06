@@ -50,8 +50,14 @@ impl Repl {
 
     /// Create a new `Repl` sharing the given transcript. Useful in tests that
     /// need to inspect the transcript after driving the REPL.
+    ///
+    /// Marks the current end of the transcript as the session start, so that
+    /// entries appended by this REPL can be distinguished from any pre-existing
+    /// entries via [`Transcript::session_entries`].
     pub async fn with_transcript(transcript: Arc<Mutex<Transcript>>) -> Result<Self> {
         use brush_builtins::{BuiltinSet, ShellBuilderExt as _};
+
+        transcript.lock().unwrap().mark_session_start();
 
         let shell = brush_core::Shell::builder()
             .default_builtins(BuiltinSet::BashMode)

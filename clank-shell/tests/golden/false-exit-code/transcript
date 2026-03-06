@@ -1,0 +1,14 @@
+[
+  {
+    "kind": "input",
+    "text": "false"
+  },
+  {
+    "kind": "input",
+    "text": "echo $?"
+  },
+  {
+    "kind": "output",
+    "text": "1\n"
+  }
+]
