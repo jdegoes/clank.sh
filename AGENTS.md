@@ -11,21 +11,33 @@ clank.sh is an AI-native shell targeting `wasm32-wasip2` and native Rust. See `R
 A C compiler must be on `$PATH` for linking. On NixOS, enter a dev shell with `nix-shell -p gcc`
 or equivalent before running Cargo commands.
 
-### Commands
+### Building
+
+The project is a standard Cargo workspace. All crates are built together from the repository root.
 
 ```bash
 # Build all crates (native target)
 cargo build
 
-# Run all tests
-cargo test
-
-# Build and run the shell binary
+# Build and run the shell binary directly
 cargo run --bin clank
 
-# Check without producing artifacts (faster)
+# Check without producing artifacts (faster iteration)
 cargo check
+
+# Build a release binary
+cargo build --release
 ```
+
+The compiled `clank` binary is placed at `target/debug/clank` (or `target/release/clank` for
+release builds).
+
+**Dependency notes:**
+
+- `reqwest` is configured with `rustls-tls` to avoid an OpenSSL system dependency. No `libssl-dev`
+  or equivalent is required.
+- `brush-core` and its dependencies (`nix`, `command-fds`, etc.) are native-only and will not
+  compile for `wasm32-wasip2`. See Targets below.
 
 ### Targets
 
@@ -36,6 +48,63 @@ until that work is complete — it will fail because `brush-core` depends on the
 ### Acceptance bar
 
 All PRs must pass `cargo build` and `cargo test` with zero failures and zero new warnings.
+
+Every new feature or bug fix must be accompanied by tests. Choose the appropriate layer:
+
+- **Unit test** — for pure logic, error types, or anything testable without the public API boundary.
+- **Integration test** (`crate/tests/`) — for behaviour exercised through the public API of a
+  single crate, or for trait contract verification.
+- **End-to-end test** (`clank-shell/tests/acceptance.rs`) — for behaviour observable at the binary
+  level: exit codes, stdout/stderr content, shell semantics.
+
+When in doubt, prefer a lower layer (unit > integration > e2e) for speed and isolation. Add an
+e2e test whenever a plan's acceptance criteria can be expressed as binary behaviour.
+
+### Testing structure
+
+Tests are organised in three layers. Each layer has a distinct scope and lives in a specific location.
+
+#### 1. Unit tests — inline `#[cfg(test)]` modules
+
+Live in the same file as the code under test. Used for:
+
+- Pure logic (error types, data transformations, Display impls)
+- Constructor smoke tests
+- Any test that does not require the public API boundary
+
+#### 2. Integration tests — `crate/tests/*.rs`
+
+Each file in a crate's `tests/` directory is compiled as a separate binary with access to the
+crate's public API only. Used for:
+
+- `clank-core/tests/` — `Repl` behaviour driven through injectable I/O (`Cursor<&[u8]>` as input,
+  `Vec<u8>` as prompt output)
+- `clank-http/tests/` — `HttpClient` trait contract tests using `MockHttpClient`; demonstrates the
+  `Arc<dyn HttpClient>` injection pattern all callers must follow
+
+**`MockHttpClient`** is defined in `clank-http/tests/http_client.rs`. It records every call and
+returns a canned response. Copy or re-export it when writing tests that need HTTP without a real
+network.
+
+#### 3. End-to-end binary tests — `clank-shell/tests/acceptance.rs`
+
+Drives the compiled `clank` binary via `std::process::Command` using `assert_cmd` and `predicates`.
+Used for:
+
+- Acceptance criteria from implementation plans (exit codes, stdout content)
+- Regression tests for shell behaviour visible at the binary level
+
+#### Injectable I/O contract
+
+`Repl::run()` accepts `impl BufRead` (command input) and `impl Write` (prompt output). Command
+output from brush-core builtins flows through the real process stdout/stderr and is not captured
+by these parameters. To assert on command output, use the binary-level tests in layer 3.
+
+#### Known limitations
+
+- `exit N` with a non-zero argument does not propagate the exit code to the OS in the current
+  brush-core integration. The corresponding test is commented out in `acceptance.rs` pending a
+  process-model redesign.
 
 ## Code Conventions
 
@@ -99,4 +168,3 @@ Files are named in `kebab-case`. Plans and issues should use a short descriptive
 - The code is the ground truth for current system state. Design docs record intent and decisions at a point in time, not a live mirror of the code.
 - Agents must never modify files in `dev-docs/plans/approved/`, `dev-docs/plans/done/`, `dev-docs/issues/closed/`, or `dev-docs/designs/approved/`.
 - Agents must not create a plan without an originating issue in `dev-docs/issues/open/`.
-
