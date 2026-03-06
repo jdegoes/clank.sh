@@ -1,0 +1,47 @@
+[workspace]
+members = [
+    "clank-shell",
+    "clank-core",
+    "clank-http",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+authors = ["clank.sh contributors"]
+
+[workspace.dependencies]
+# Shell interpreter
+brush-core = "0.4.0"
+brush-parser = "0.3.0"
+brush-builtins = "0.1.0"
+
+# Async runtime
+tokio = { version = "1.48", features = ["full"] }
+
+# HTTP (native) — use rustls to avoid OpenSSL system dependency
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "2.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Async traits
+async-trait = "0.1"
+
+# Tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Testing
+assert_cmd = "2.0"
+predicates = "3.0"
+test-r = { version = "3", default-features = false }
+goldenfile = "1"
+tempfile = "3"

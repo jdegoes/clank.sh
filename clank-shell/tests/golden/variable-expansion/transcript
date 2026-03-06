@@ -1,0 +1,14 @@
+[
+  {
+    "kind": "input",
+    "text": "X=world"
+  },
+  {
+    "kind": "input",
+    "text": "echo $X"
+  },
+  {
+    "kind": "output",
+    "text": "world\n"
+  }
+]

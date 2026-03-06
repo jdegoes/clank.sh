@@ -1,0 +1,10 @@
+[
+  {
+    "kind": "input",
+    "text": "true && echo yes"
+  },
+  {
+    "kind": "output",
+    "text": "yes\n"
+  }
+]
