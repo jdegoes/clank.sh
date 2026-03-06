@@ -1,0 +1,16 @@
+[package]
+name = "clank-http"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+thiserror = { workspace = true }
+
+# Native HTTP client — not compiled on wasm32
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+reqwest = { workspace = true }
+tokio = { workspace = true }

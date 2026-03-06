@@ -6,7 +6,36 @@ clank.sh is an AI-native shell targeting `wasm32-wasip2` and native Rust. See `R
 
 ## Build & Test
 
-_To be filled in._
+### Prerequisites
+
+A C compiler must be on `$PATH` for linking. On NixOS, enter a dev shell with `nix-shell -p gcc`
+or equivalent before running Cargo commands.
+
+### Commands
+
+```bash
+# Build all crates (native target)
+cargo build
+
+# Run all tests
+cargo test
+
+# Build and run the shell binary
+cargo run --bin clank
+
+# Check without producing artifacts (faster)
+cargo check
+```
+
+### Targets
+
+The project currently builds for native only. The `wasm32-wasip2` target is deferred until the
+WASM process model is designed (see open issues). Do not attempt `cargo build --target wasm32-wasip2`
+until that work is complete — it will fail because `brush-core` depends on the `nix` crate.
+
+### Acceptance bar
+
+All PRs must pass `cargo build` and `cargo test` with zero failures and zero new warnings.
 
 ## Code Conventions
 

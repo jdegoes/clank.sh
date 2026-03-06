@@ -1,0 +1,18 @@
+[package]
+name = "clank-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+
+# Shell interpreter — native only; WASM process model is a future task
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+brush-core = { workspace = true }
+brush-parser = { workspace = true }
+brush-builtins = { workspace = true }
