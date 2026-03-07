@@ -195,7 +195,7 @@ impl SimpleCommand for ContextBuiltin {
         match subcommand.as_ref() {
             "show" => {
                 let transcript = clank_transcript::global();
-                let locked = transcript.lock().unwrap();
+                let locked = transcript.lock().unwrap_or_else(|e| e.into_inner());
                 let mut stdout = context.stdout();
                 for entry in locked.entries() {
                     writeln!(stdout, "{entry}").ok();
@@ -203,7 +203,10 @@ impl SimpleCommand for ContextBuiltin {
                 Ok(ExecutionResult::success())
             }
             "clear" => {
-                clank_transcript::global().lock().unwrap().clear();
+                clank_transcript::global()
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .clear();
                 Ok(ExecutionResult::success())
             }
             "trim" => {
@@ -218,7 +221,10 @@ impl SimpleCommand for ContextBuiltin {
                 };
                 match n_str.as_ref().parse::<usize>() {
                     Ok(n) => {
-                        clank_transcript::global().lock().unwrap().trim(n);
+                        clank_transcript::global()
+                            .lock()
+                            .unwrap_or_else(|e| e.into_inner())
+                            .trim(n);
                         Ok(ExecutionResult::success())
                     }
                     Err(_) => {
