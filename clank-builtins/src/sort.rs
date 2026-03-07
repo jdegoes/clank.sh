@@ -3,6 +3,8 @@ use std::io::{BufRead, Write};
 use brush_core::{ExecutionResult, commands::ExecutionContext};
 use clap::Parser;
 
+use crate::color;
+
 /// clank's internal implementation of `sort`.
 ///
 /// Sorts lines from files or stdin.
@@ -57,7 +59,7 @@ impl brush_core::builtins::Command for SortCommand {
                             match line {
                                 Ok(l) => all_lines.push(l),
                                 Err(e) => {
-                                    writeln!(stderr, "sort: {file}: {e}").ok();
+                                    writeln!(stderr, "{}sort:{} {file}: {e}", color::CMD, color::RESET).ok();
                                     had_error = true;
                                     break;
                                 }
@@ -65,7 +67,7 @@ impl brush_core::builtins::Command for SortCommand {
                         }
                     }
                     Err(e) => {
-                        writeln!(stderr, "sort: {file}: {e}").ok();
+                        writeln!(stderr, "{}sort:{} {file}: {e}", color::CMD, color::RESET).ok();
                         had_error = true;
                     }
                 }

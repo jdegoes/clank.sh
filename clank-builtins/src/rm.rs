@@ -3,6 +3,8 @@ use std::io::Write;
 use brush_core::{ExecutionResult, commands::ExecutionContext};
 use clap::Parser;
 
+use crate::color;
+
 /// clank's internal implementation of `rm`.
 ///
 /// Removes files and directories. Use `-r` for recursive, `-f` to suppress errors.
@@ -46,7 +48,7 @@ impl brush_core::builtins::Command for RmCommand {
 
             if let Err(e) = result {
                 if !self.force {
-                    writeln!(stderr, "rm: {path}: {e}").ok();
+                    writeln!(stderr, "{}rm:{} {path}: {e}", color::CMD, color::RESET).ok();
                     had_error = true;
                 }
             }

@@ -4,6 +4,8 @@ use std::path::Path;
 use brush_core::{ExecutionResult, commands::ExecutionContext};
 use clap::Parser;
 
+use crate::color;
+
 /// clank's internal implementation of `mv`.
 ///
 /// Moves or renames files and directories.
@@ -28,7 +30,7 @@ impl brush_core::builtins::Command for MvCommand {
 
         let multiple_sources = sources.len() > 1;
         if multiple_sources && !dest.is_dir() {
-            writeln!(stderr, "mv: target '{dest}': Not a directory", dest = dest.display()).ok();
+            writeln!(stderr, "{}mv:{} target '{dest}': Not a directory", color::CMD, color::RESET, dest = dest.display()).ok();
             return Ok(ExecutionResult::new(1));
         }
 
@@ -46,11 +48,11 @@ impl brush_core::builtins::Command for MvCommand {
                 // Cross-device rename: try copy + remove.
                 if e.raw_os_error() == Some(18) || e.kind() == std::io::ErrorKind::Other {
                     if let Err(e2) = cross_device_move(src, &target) {
-                        writeln!(stderr, "mv: {src_str}: {e2}").ok();
+                        writeln!(stderr, "{}mv:{} {src_str}: {e2}", color::CMD, color::RESET).ok();
                         had_error = true;
                     }
                 } else {
-                    writeln!(stderr, "mv: {src_str}: {e}").ok();
+                    writeln!(stderr, "{}mv:{} {src_str}: {e}", color::CMD, color::RESET).ok();
                     had_error = true;
                 }
             }

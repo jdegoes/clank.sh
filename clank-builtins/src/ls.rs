@@ -5,6 +5,8 @@ use std::time::SystemTime;
 use brush_core::{ExecutionResult, commands::ExecutionContext};
 use clap::Parser;
 
+use crate::color;
+
 // ── Named types ───────────────────────────────────────────────────────────────
 
 /// A single entry to be listed, carrying all display-relevant information.
@@ -86,7 +88,7 @@ impl brush_core::builtins::Command for LsCommand {
                 writeln!(stdout, "{}:", path.display()).ok();
             }
             if let Err(e) = list_path(path, &opts, &mut stdout) {
-                writeln!(stderr, "ls: {}: {e}", path.display()).ok();
+                writeln!(stderr, "{}ls:{} {}: {e}", color::CMD, color::RESET, path.display()).ok();
                 had_error = true;
             }
             if show_header {

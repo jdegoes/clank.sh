@@ -3,6 +3,8 @@ use std::io::{BufRead, Write};
 use brush_core::{ExecutionResult, commands::ExecutionContext};
 use clap::Parser;
 
+use crate::color;
+
 /// clank's internal implementation of `cat`.
 ///
 /// Concatenates files and writes to stdout. Use `-` to read from stdin.
@@ -39,7 +41,7 @@ impl brush_core::builtins::Command for CatCommand {
                     match line {
                         Ok(l) => { writeln!(stdout, "{l}").ok(); }
                         Err(e) => {
-                            writeln!(stderr, "cat: stdin: {e}").ok();
+                            writeln!(stderr, "{}cat:{} stdin: {e}", color::CMD, color::RESET).ok();
                             had_error = true;
                             break;
                         }
@@ -49,7 +51,7 @@ impl brush_core::builtins::Command for CatCommand {
                 match std::fs::read(file) {
                     Ok(contents) => { stdout.write_all(&contents).ok(); }
                     Err(e) => {
-                        writeln!(stderr, "cat: {file}: {e}").ok();
+                        writeln!(stderr, "{}cat:{} {file}: {e}", color::CMD, color::RESET).ok();
                         had_error = true;
                     }
                 }

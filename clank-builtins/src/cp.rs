@@ -4,6 +4,8 @@ use std::path::Path;
 use brush_core::{ExecutionResult, commands::ExecutionContext};
 use clap::Parser;
 
+use crate::color;
+
 /// clank's internal implementation of `cp`.
 ///
 /// Copies files and directories. Use `-r` for recursive directory copy.
@@ -32,7 +34,7 @@ impl brush_core::builtins::Command for CpCommand {
 
         let multiple_sources = sources.len() > 1;
         if multiple_sources && !dest.is_dir() {
-            writeln!(stderr, "cp: target '{dest}': Not a directory", dest = dest.display()).ok();
+            writeln!(stderr, "{}cp:{} target '{dest}': Not a directory", color::CMD, color::RESET, dest = dest.display()).ok();
             return Ok(ExecutionResult::new(1));
         }
 
@@ -48,16 +50,16 @@ impl brush_core::builtins::Command for CpCommand {
 
             if src.is_dir() {
                 if !self.recursive {
-                    writeln!(stderr, "cp: -r not specified; omitting directory '{src_str}'").ok();
+                    writeln!(stderr, "{}cp:{} -r not specified; omitting directory '{src_str}'", color::CMD, color::RESET).ok();
                     had_error = true;
                     continue;
                 }
                 if let Err(e) = copy_dir_recursive(src, &target) {
-                    writeln!(stderr, "cp: {src_str}: {e}").ok();
+                    writeln!(stderr, "{}cp:{} {src_str}: {e}", color::CMD, color::RESET).ok();
                     had_error = true;
                 }
             } else if let Err(e) = std::fs::copy(src, &target) {
-                writeln!(stderr, "cp: {src_str}: {e}").ok();
+                writeln!(stderr, "{}cp:{} {src_str}: {e}", color::CMD, color::RESET).ok();
                 had_error = true;
             }
         }

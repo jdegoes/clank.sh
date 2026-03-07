@@ -3,6 +3,8 @@ use std::io::{BufRead, Write};
 use brush_core::{ExecutionResult, commands::ExecutionContext};
 use clap::Parser;
 
+use crate::color;
+
 /// clank's internal implementation of `tail`.
 ///
 /// Outputs the last N lines of each file (default 10). Reads stdin if no files given.
@@ -61,7 +63,7 @@ impl brush_core::builtins::Command for TailCommand {
                         output_tail_lines(&all_lines, self.lines, &mut stdout);
                     }
                     Err(e) => {
-                        writeln!(stderr, "tail: {file}: {e}").ok();
+                        writeln!(stderr, "{}tail:{} {file}: {e}", color::CMD, color::RESET).ok();
                         had_error = true;
                     }
                 }

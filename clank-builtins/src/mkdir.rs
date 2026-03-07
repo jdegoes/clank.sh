@@ -3,6 +3,8 @@ use std::io::Write;
 use brush_core::{ExecutionResult, commands::ExecutionContext};
 use clap::Parser;
 
+use crate::color;
+
 /// clank's internal implementation of `mkdir`.
 ///
 /// Creates directories. Use `-p` to create parent directories as needed.
@@ -34,7 +36,7 @@ impl brush_core::builtins::Command for MkdirCommand {
                 std::fs::create_dir(dir)
             };
             if let Err(e) = result {
-                writeln!(stderr, "mkdir: {dir}: {e}").ok();
+                writeln!(stderr, "{}mkdir:{} {dir}: {e}", color::CMD, color::RESET).ok();
                 had_error = true;
             }
         }

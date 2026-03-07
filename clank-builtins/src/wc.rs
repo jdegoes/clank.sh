@@ -3,6 +3,8 @@ use std::io::{BufRead, Write};
 use brush_core::{ExecutionResult, commands::ExecutionContext};
 use clap::Parser;
 
+use crate::color;
+
 /// Counts for a single input source.
 struct Counts {
     lines: usize,
@@ -88,7 +90,7 @@ impl brush_core::builtins::Command for WcCommand {
                         total.bytes += counts.bytes;
                     }
                     Err(e) => {
-                        writeln!(stderr, "wc: {file}: {e}").ok();
+                        writeln!(stderr, "{}wc:{} {file}: {e}", color::CMD, color::RESET).ok();
                         had_error = true;
                     }
                 }

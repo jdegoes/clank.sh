@@ -4,6 +4,8 @@ use std::io::Write;
 use brush_core::{ExecutionResult, commands::ExecutionContext};
 use clap::Parser;
 
+use crate::color;
+
 /// clank's internal implementation of `touch`.
 ///
 /// Creates empty files or updates modification time of existing files.
@@ -31,7 +33,7 @@ impl brush_core::builtins::Command for TouchCommand {
                 .open(file);
 
             if let Err(e) = result {
-                writeln!(stderr, "touch: {file}: {e}").ok();
+                writeln!(stderr, "{}touch:{} {file}: {e}", color::CMD, color::RESET).ok();
                 had_error = true;
             }
         }

@@ -3,6 +3,8 @@ use std::io::{BufRead, Write};
 use brush_core::{ExecutionResult, commands::ExecutionContext};
 use clap::Parser;
 
+use crate::color;
+
 /// clank's internal implementation of `uniq`.
 ///
 /// Filters adjacent duplicate lines. Use `-c` to prefix lines with occurrence count.
@@ -37,7 +39,7 @@ impl brush_core::builtins::Command for UniqCommand {
                             .collect()
                     }
                     Err(e) => {
-                        writeln!(stderr, "uniq: {f}: {e}").ok();
+                        writeln!(stderr, "{}uniq:{} {f}: {e}", color::CMD, color::RESET).ok();
                         return Ok(ExecutionResult::new(1));
                     }
                 }

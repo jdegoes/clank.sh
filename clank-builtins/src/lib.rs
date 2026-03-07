@@ -1,4 +1,5 @@
 mod cat;
+mod color;
 mod cp;
 mod echo;
 mod env;

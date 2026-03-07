@@ -3,6 +3,8 @@ use std::io::Write;
 use brush_core::{ExecutionResult, commands::ExecutionContext};
 use clap::Parser;
 
+use crate::color;
+
 /// clank's internal implementation of `sleep`.
 ///
 /// Pauses for the specified number of seconds. Supports decimal values.
@@ -22,7 +24,7 @@ impl brush_core::builtins::Command for SleepCommand {
     ) -> Result<ExecutionResult, Self::Error> {
         if self.seconds < 0.0 {
             let mut stderr = context.stderr();
-            writeln!(stderr, "sleep: invalid time interval: {}", self.seconds).ok();
+            writeln!(stderr, "{}sleep:{} invalid time interval: {}", color::CMD, color::RESET, self.seconds).ok();
             return Ok(ExecutionResult::new(1));
         }
 

@@ -3,6 +3,8 @@ use std::io::{BufRead, Write};
 use brush_core::{ExecutionResult, commands::ExecutionContext};
 use clap::Parser;
 
+use crate::color;
+
 /// clank's internal implementation of `head`.
 ///
 /// Outputs the first N lines of each file (default 10). Reads stdin if no files given.
@@ -49,7 +51,7 @@ impl brush_core::builtins::Command for HeadCommand {
                     match line {
                         Ok(l) => { writeln!(stdout, "{l}").ok(); }
                         Err(e) => {
-                            writeln!(stderr, "head: stdin: {e}").ok();
+                            writeln!(stderr, "{}head:{} stdin: {e}", color::CMD, color::RESET).ok();
                             had_error = true;
                             break;
                         }
@@ -63,7 +65,7 @@ impl brush_core::builtins::Command for HeadCommand {
                             match line {
                                 Ok(l) => { writeln!(stdout, "{l}").ok(); }
                                 Err(e) => {
-                                    writeln!(stderr, "head: {file}: {e}").ok();
+                                    writeln!(stderr, "{}head:{} {file}: {e}", color::CMD, color::RESET).ok();
                                     had_error = true;
                                     break;
                                 }
@@ -71,7 +73,7 @@ impl brush_core::builtins::Command for HeadCommand {
                         }
                     }
                     Err(e) => {
-                        writeln!(stderr, "head: {file}: {e}").ok();
+                        writeln!(stderr, "{}head:{} {file}: {e}", color::CMD, color::RESET).ok();
                         had_error = true;
                     }
                 }
