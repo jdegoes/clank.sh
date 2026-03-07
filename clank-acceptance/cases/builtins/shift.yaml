@@ -1,0 +1,9 @@
+name: "shift"
+cases:
+  - name: shifts_positional_params_in_function
+    stdin: |
+      f() { shift; echo $1; }
+      f a b c
+    expect_exit: 0
+    expect_stdout: "b\n"
+    expect_stderr_empty: true

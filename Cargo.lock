@@ -422,12 +422,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "clank-builtins"
+version = "0.1.0"
+dependencies = [
+ "brush-builtins",
+ "brush-core",
+]
+
+[[package]]
 name = "clank-core"
 version = "0.1.0"
 dependencies = [
  "brush-builtins",
  "brush-core",
  "brush-parser",
+ "clank-builtins",
  "tokio",
 ]
 

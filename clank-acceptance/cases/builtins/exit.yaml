@@ -1,0 +1,12 @@
+name: "exit"
+cases:
+  - name: specific_exit_code
+    stdin: |
+      exit 42
+    expect_exit: 42
+
+  - name: exit_zero
+    stdin: |
+      true
+      exit 0
+    expect_exit: 0

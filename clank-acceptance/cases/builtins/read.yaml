@@ -1,0 +1,17 @@
+name: "read"
+cases:
+  - name: reads_single_var
+    stdin: |
+      read line <<< "hello world"
+      echo $line
+    expect_exit: 0
+    expect_stdout: "hello world\n"
+    expect_stderr_empty: true
+
+  - name: reads_multiple_vars
+    stdin: |
+      read a b c <<< "one two three"
+      echo $b
+    expect_exit: 0
+    expect_stdout: "two\n"
+    expect_stderr_empty: true

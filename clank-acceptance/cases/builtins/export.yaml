@@ -1,0 +1,9 @@
+name: "export"
+cases:
+  - name: makes_var_visible
+    stdin: |
+      export FOO=hello
+      echo $FOO
+    expect_exit: 0
+    expect_stdout: "hello\n"
+    expect_stderr_empty: true

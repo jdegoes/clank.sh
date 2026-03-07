@@ -1,0 +1,9 @@
+[package]
+name    = "clank-builtins"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+brush-core     = "0.4"
+brush-builtins = "0.1"

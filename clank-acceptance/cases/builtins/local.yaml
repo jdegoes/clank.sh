@@ -1,0 +1,10 @@
+name: "local"
+cases:
+  - name: scopes_variable_to_function
+    stdin: |
+      f() { local v=inner; echo $v; }
+      f
+      echo ${v:-outer}
+    expect_exit: 0
+    expect_stdout: "inner\nouter\n"
+    expect_stderr_empty: true

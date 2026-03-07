@@ -1,0 +1,9 @@
+name: "set"
+cases:
+  - name: sets_positional_parameters
+    stdin: |
+      set -- alpha beta gamma
+      echo $2
+    expect_exit: 0
+    expect_stdout: "beta\n"
+    expect_stderr_empty: true

@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+clank-builtins = { path = "../clank-builtins" }
 brush-core     = "0.4"
 brush-parser   = "0.3"
 brush-builtins = "0.1"

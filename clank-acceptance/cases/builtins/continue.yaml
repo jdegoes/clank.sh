@@ -1,0 +1,11 @@
+name: "continue"
+cases:
+  - name: skips_current_iteration
+    stdin: |
+      for i in 1 2 3; do
+        [ $i -eq 2 ] && continue
+        echo $i
+      done
+    expect_exit: 0
+    expect_stdout: "1\n3\n"
+    expect_stderr_empty: true

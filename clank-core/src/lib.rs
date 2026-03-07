@@ -1,14 +1,8 @@
-//! clank-core — the reusable shell logic for clank.
+//! clank-core — shell lifecycle and public API for clank.
 //!
-//! This crate is the library heart of clank. It wraps [`brush_core`] with
-//! clank-specific defaults and exposes a small, stable public API used by:
-//!
-//! - `clank-shell` (the binary entry point)
-//! - `clank-core/tests/` (integration tests)
-//! - Future embedders and tooling
-//!
-//! All direct `brush_core` imports live here. No other crate in the workspace
-//! depends on `brush_core` directly.
+//! Wraps [`brush_core`] with clank-specific defaults and exposes a small,
+//! stable public API used by `clank-shell`, integration tests, and future
+//! embedders.
 
 use brush_builtins::{default_builtins, BuiltinSet};
 pub use brush_core::{CreateOptions, Error, Shell};
@@ -33,6 +27,18 @@ pub fn default_options() -> CreateOptions {
     }
 }
 
+/// Returns [`CreateOptions`] for an interactive clank shell session.
+///
+/// Identical to [`default_options`] except `interactive` is `true`, which
+/// signals to `brush-core` that the shell is running in an interactive
+/// terminal context.
+pub fn interactive_options() -> CreateOptions {
+    CreateOptions {
+        interactive: true,
+        ..default_options()
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Execution helpers
 // ---------------------------------------------------------------------------
@@ -51,6 +57,61 @@ pub async fn run_with_options(command: &str, options: CreateOptions) -> Result<u
 /// Convenience wrapper around [`run_with_options`].
 pub async fn run(command: &str) -> Result<u8, Error> {
     run_with_options(command, default_options()).await
+}
+
+/// Run an interactive REPL loop against an already-constructed [`Shell`].
+///
+/// Reads lines from `input`, executes each one against the shell, and
+/// continues until EOF or the shell signals an explicit exit (e.g. the user
+/// types `exit`). Prints `$ ` to `output` before each line read.
+///
+/// Returns the exit code of the last executed command, or `0` if no commands
+/// were executed before EOF.
+///
+/// # Why take `input` and `output`?
+///
+/// Accepting `impl BufRead` and `impl Write` instead of hardcoding
+/// `stdin`/`stdout` lets integration tests drive the loop with in-memory
+/// buffers without spawning a subprocess.
+pub async fn run_interactive(
+    shell: &mut Shell,
+    mut input: impl std::io::BufRead,
+    mut output: impl std::io::Write,
+) -> Result<u8, Error> {
+    let params = shell.default_exec_params();
+    let mut last_exit_code: u8 = 0;
+    let mut line = String::new();
+
+    loop {
+        // Emit the prompt. Flush is required because stdout is typically
+        // line-buffered and the prompt has no trailing newline.
+        write!(output, "$ ").ok();
+        output.flush().ok();
+
+        line.clear();
+        let bytes_read = input.read_line(&mut line)?;
+
+        // EOF — clean termination.
+        if bytes_read == 0 {
+            break;
+        }
+
+        // Strip the trailing newline; skip truly empty lines.
+        let cmd = line.trim_end_matches('\n').trim_end_matches('\r');
+        if cmd.is_empty() {
+            continue;
+        }
+
+        let result = shell.run_string(cmd, &params).await?;
+        last_exit_code = result.exit_code.into();
+
+        // `exit [n]` inside the script sets ExitShell control flow.
+        if result.is_return_or_exit() {
+            break;
+        }
+    }
+
+    Ok(last_exit_code)
 }
 
 // ---------------------------------------------------------------------------
@@ -86,6 +147,104 @@ mod tests {
     #[test]
     fn default_options_shell_name_is_clank() {
         assert_eq!(default_options().shell_name, Some("clank".to_owned()));
+    }
+
+    // --- interactive_options field coverage ---
+
+    #[test]
+    fn interactive_options_is_interactive() {
+        assert!(interactive_options().interactive);
+    }
+
+    #[test]
+    fn interactive_options_skips_profile() {
+        assert!(interactive_options().no_profile);
+    }
+
+    #[test]
+    fn interactive_options_skips_rc() {
+        assert!(interactive_options().no_rc);
+    }
+
+    #[test]
+    fn interactive_options_disables_editing() {
+        assert!(interactive_options().no_editing);
+    }
+
+    #[test]
+    fn interactive_options_shell_name_is_clank() {
+        assert_eq!(interactive_options().shell_name, Some("clank".to_owned()));
+    }
+
+    // --- run_interactive() behaviour ---
+    //
+    // These tests verify exit-code and control-flow semantics. Command output
+    // goes to the shell's inherited stdout (not the `output` writer), so
+    // output content is covered by the acceptance test suite instead.
+
+    #[tokio::test]
+    async fn run_interactive_exits_zero_after_successful_commands() {
+        let input = b"true\ntrue\n" as &[u8];
+        let mut shell = Shell::new(interactive_options())
+            .await
+            .expect("shell creation should not error");
+        let code = run_interactive(&mut shell, input, std::io::sink())
+            .await
+            .expect("run_interactive should not error");
+        assert_eq!(code, 0);
+    }
+
+    #[tokio::test]
+    async fn run_interactive_propagates_exit_code_from_exit_command() {
+        let input = b"exit 7\n" as &[u8];
+        let mut shell = Shell::new(interactive_options())
+            .await
+            .expect("shell creation should not error");
+        let code = run_interactive(&mut shell, input, std::io::sink())
+            .await
+            .expect("run_interactive should not error");
+        assert_eq!(code, 7, "exit code should be 7");
+    }
+
+    #[tokio::test]
+    async fn run_interactive_stops_after_exit_command() {
+        // Commands after `exit` must not execute. We verify this by checking
+        // that the exit code matches the `exit` argument, not any later command.
+        let input = b"exit 3\nexit 99\n" as &[u8];
+        let mut shell = Shell::new(interactive_options())
+            .await
+            .expect("shell creation should not error");
+        let code = run_interactive(&mut shell, input, std::io::sink())
+            .await
+            .expect("run_interactive should not error");
+        assert_eq!(code, 3, "loop should stop at the first exit");
+    }
+
+    #[tokio::test]
+    async fn run_interactive_returns_zero_on_eof_with_no_commands() {
+        let input = b"" as &[u8];
+        let mut shell = Shell::new(interactive_options())
+            .await
+            .expect("shell creation should not error");
+        let code = run_interactive(&mut shell, input, std::io::sink())
+            .await
+            .expect("run_interactive should not error");
+        assert_eq!(code, 0, "empty input should exit 0");
+    }
+
+    #[tokio::test]
+    async fn run_interactive_returns_last_exit_code_on_eof() {
+        let input = b"true\nfalse\n" as &[u8];
+        let mut shell = Shell::new(interactive_options())
+            .await
+            .expect("shell creation should not error");
+        let code = run_interactive(&mut shell, input, std::io::sink())
+            .await
+            .expect("run_interactive should not error");
+        assert_ne!(
+            code, 0,
+            "last command was false; exit code should be nonzero"
+        );
     }
 
     // --- run() behaviour ---

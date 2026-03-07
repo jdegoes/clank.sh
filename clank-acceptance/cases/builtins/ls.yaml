@@ -1,0 +1,6 @@
+name: "ls"
+cases:
+  - name: lists_directory
+    stdin: |
+      ls /tmp
+    expect_exit: 0

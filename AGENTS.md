@@ -87,6 +87,7 @@ cargo fmt --all
 ### Git
 
 - Never run `git push --force`.
+- Never create a git commit without explicit approval from the user.
 
 ### Documentation and Historical Records
 
