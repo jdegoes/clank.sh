@@ -1,0 +1,5 @@
+desc: "Tutorial §2 — redirection and command substitution produce expected output"
+stdin: |
+  echo "written to file" > redir-test.txt && echo $(< redir-test.txt)
+stdout: "$ written to file\n$ "
+stderr: ''

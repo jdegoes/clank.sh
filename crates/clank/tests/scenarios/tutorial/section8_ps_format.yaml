@@ -1,0 +1,5 @@
+desc: "Tutorial §8 — ps produces standard column headers (PID, STAT, COMMAND)"
+stdin: |
+  ps
+stdout: "$   PID STAT COMMAND\n    1 R    ps\n$ "
+stderr: ''

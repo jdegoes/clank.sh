@@ -1,0 +1,5 @@
+desc: echo produces output on stdout prefixed with the shell prompt
+stdin: |
+  echo "hello world"
+stdout: "$ hello world\n$ "
+stderr: ''

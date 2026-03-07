@@ -1,0 +1,9 @@
+desc: ask with no API key configured prints an informative error to stderr
+stdin: |
+  ask "hello"
+stdout: '$ $ '
+stderr: |+
+  clank: ask: no API key configured for provider 'anthropic' or 'openrouter'
+  To use Anthropic directly:  add [providers.anthropic] api_key = "..." to ~/.config/ask/ask.toml
+  To use OpenRouter:          add [providers.openrouter] api_key = "..." to ~/.config/ask/ask.toml
+

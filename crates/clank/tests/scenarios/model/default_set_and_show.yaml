@@ -1,0 +1,8 @@
+desc: model default sets the default model and model list reflects it
+stdin: |
+  model add anthropic --key sk-test
+  model default anthropic/claude-haiku-3-5
+  model list
+config_after:
+  default_model: anthropic/claude-haiku-3-5
+stdout: "$ Provider 'anthropic' configured.\n$ Default model set to 'anthropic/claude-haiku-3-5'.\n$ Default model: anthropic/claude-haiku-3-5\n\nProviders:\n  anthropic: api_key configured\n$ "

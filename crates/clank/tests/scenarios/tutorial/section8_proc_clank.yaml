@@ -1,0 +1,6 @@
+desc: "Tutorial §8 — /proc/clank/ is always present; system-prompt is readable"
+stdin: |
+  ls /proc/clank
+  cat /proc/clank/system-prompt
+stdout: "$ system-prompt\n$ (system prompt not configured)\n$ "
+stderr: ''

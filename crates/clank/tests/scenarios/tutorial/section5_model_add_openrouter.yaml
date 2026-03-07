@@ -1,0 +1,9 @@
+desc: "Tutorial §5 — model add openrouter writes the key and confirms to stdout"
+stdin: |
+  model add openrouter --key sk-or-test-key
+stdout: "$ Provider 'openrouter' configured.\n$ "
+stderr: ''
+config_after:
+  providers:
+    openrouter:
+      api_key: sk-or-test-key

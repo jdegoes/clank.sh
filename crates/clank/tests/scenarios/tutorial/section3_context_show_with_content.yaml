@@ -1,0 +1,7 @@
+desc: "Tutorial §3 — context show reflects prior commands and their output in the transcript"
+stdin: |
+  echo "some work"
+  echo "more work"
+  context show
+stdout: "$ some work\n$ more work\n$ $ echo \"some work\"\nsome work\n$ echo \"more work\"\nmore work\n$ context show\n$ "
+stderr: ''

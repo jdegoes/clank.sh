@@ -1,0 +1,5 @@
+desc: false || echo runs the right side when the left side fails
+stdin: |
+  false || echo "ran"
+stdout: "$ ran\n$ "
+stderr: ''

@@ -1,0 +1,11 @@
+desc: "Tutorial §7 — mkdir + cd into it + file creation; verifies cd-after-mkdir fix"
+stdin: |
+  mkdir demo
+  cd demo
+  echo '#!/bin/bash' > hello.sh
+  echo 'echo "Hello, $1!"' >> hello.sh
+  cat hello.sh
+stdout: "$ $ $ $ $ #!/bin/bash\necho \"Hello, $1!\"\n$ "
+stderr: ''
+files_after:
+  "demo/hello.sh": "#!/bin/bash\necho \"Hello, $1!\"\n"

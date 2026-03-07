@@ -1,0 +1,5 @@
+desc: false ; echo always runs the right side regardless of exit code
+stdin: |
+  false ; echo "ran"
+stdout: "$ ran\n$ "
+stderr: ''

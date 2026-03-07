@@ -1,0 +1,4 @@
+desc: model list with no config file prints the no-providers message
+stdin: |
+  model list
+stdout: "$ No providers configured.\nRun: model add anthropic --key <KEY>\n$ "

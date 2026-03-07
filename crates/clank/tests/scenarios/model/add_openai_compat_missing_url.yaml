@@ -1,0 +1,7 @@
+desc: model add openai-compat without --url prints a usage error to stderr
+stdin: |
+  model add openai-compat
+stdout: '$ $ '
+stderr: |
+  clank: model add: --url is required for provider 'openai-compat'
+  usage: model add openai-compat --url <BASE_URL> [--key <API_KEY>]

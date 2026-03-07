@@ -1,0 +1,9 @@
+desc: "Tutorial §3 — context trim N removes the N oldest entries; newer entries remain"
+stdin: |
+  echo "one"
+  echo "two"
+  echo "three"
+  context trim 2
+  context show
+stdout: "$ one\n$ two\n$ three\n$ $ $ echo \"two\"\ntwo\n$ echo \"three\"\nthree\n$ context trim 2\n$ context show\n$ "
+stderr: ''

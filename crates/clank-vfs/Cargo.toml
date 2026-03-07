@@ -1,0 +1,10 @@
+[package]
+name = "clank-vfs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tokio-test = { workspace = true }

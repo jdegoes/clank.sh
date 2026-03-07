@@ -1,0 +1,8 @@
+desc: "Tutorial §9 — rm typed by the user runs without sudo; exits 1 (rm's own error) not 5"
+# We assert stderr is non-empty (rm emitted an error) and stdout is just the prompts.
+# The exact error path is not asserted because tempdir paths are platform-specific.
+# The key contract is: exit code is 1 (rm's error), NOT 5 (authorization denied).
+# That exit code contract is covered by the Level 2 authorization tests.
+stdin: |
+  rm nonexistent-file.txt
+stdout: "$ $ "

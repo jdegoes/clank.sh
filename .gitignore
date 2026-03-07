@@ -1,0 +1,31 @@
+# Cargo build output
+/target/
+
+# Per-user Cargo config (local overrides, credentials)
+.cargo/credentials.toml
+.cargo/credentials
+
+# Editor and IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Local config override (contains real API keys — never commit)
+ask.toml
+
+# Test artifacts that may be left behind by the scenario harness or manual testing
+clank-tut-*/
+clank-wd-*/
+clank-cd-*/
+clank-auth-*/
+
+# Environment files
+.env
+.env.*

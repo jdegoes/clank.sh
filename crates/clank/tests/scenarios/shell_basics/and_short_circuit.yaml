@@ -1,0 +1,5 @@
+desc: false && echo does not print when left side fails
+stdin: |
+  false && echo "should not print"
+stdout: '$ $ '
+stderr: ''

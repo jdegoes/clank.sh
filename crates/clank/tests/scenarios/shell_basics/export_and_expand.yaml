@@ -1,0 +1,5 @@
+desc: exported variable is visible to subsequent commands in the same session
+stdin: |
+  export FOO=bar && echo $FOO
+stdout: "$ bar\n$ "
+stderr: ''

@@ -1,0 +1,7 @@
+desc: "Tutorial §3 — context clear removes all entries; context show afterwards is empty"
+stdin: |
+  echo "some work"
+  context clear
+  context show
+stdout: "$ some work\n$ $ $ context show\n$ "
+stderr: ''

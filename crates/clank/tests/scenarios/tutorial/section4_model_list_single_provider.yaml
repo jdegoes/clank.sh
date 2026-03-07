@@ -1,0 +1,9 @@
+desc: "Tutorial §4 — model list with a single provider shows provider status and default model"
+config:
+  providers:
+    anthropic:
+      api_key: "sk-ant-test"
+stdin: |
+  model list
+stdout: "$ Default model: anthropic/claude-sonnet-4-5\n\nProviders:\n  anthropic: api_key configured\n$ "
+stderr: ''
