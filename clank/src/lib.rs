@@ -1,6 +1,7 @@
+mod tee;
 mod transcript;
 
-use std::io::{self, BufRead, Read, Write};
+use std::io::{self, BufRead, Write};
 
 use brush_builtins::{BuiltinSet, ShellBuilderExt};
 use brush_core::openfiles::OpenFile;
@@ -17,12 +18,12 @@ pub use transcript::{CommandOutcome, Transcript, TranscriptEntry};
 pub struct ClankShell {
     /// The underlying bash-compatible shell interpreter.
     shell: Shell,
-    /// The session transcript — every command and its output, in order.
-    transcript: Transcript,
+    /// The session transcript — every command, its stdout, and its stderr.
+    pub(crate) transcript: Transcript,
 }
 
 impl ClankShell {
-    /// Create a new `ClankShell` with an empty transcript.
+    /// Create a new `ClankShell` with a default-budget transcript.
     pub async fn new() -> Self {
         let mut shell = Shell::builder()
             .default_builtins(BuiltinSet::BashMode)
@@ -35,46 +36,44 @@ impl ClankShell {
         clank_builtins::register(&mut shell);
         Self {
             shell,
-            transcript: Transcript::new(),
+            transcript: Transcript::with_default_budget(),
         }
     }
 
-    /// Run a single command line, capture its output, record both in the
-    /// transcript, and return the outcome.
+    /// Run a single command line, capture its stdout and stderr, record both
+    /// in the transcript, and return the outcome.
     ///
-    /// Output is written to the process's real stdout after capture, so the
-    /// operator sees it on the terminal.
+    /// Output is forwarded to the real terminal in real-time via background
+    /// drain threads (tee), while also being accumulated for transcript recording.
     pub async fn run_command(&mut self, input: &str) -> CommandOutcome {
         // Record the command input into the transcript.
         self.transcript.push_command(input);
 
-        // Set up a pipe to capture stdout and stderr.
-        let (mut reader, writer) = io::pipe().expect("failed to create output pipe");
-        let writer_clone = writer.try_clone().expect("failed to clone pipe writer");
+        // Set up separate capture pairs for stdout and stderr.
+        let (stdout_writer, stdout_capture) =
+            tee::tee_stdout().expect("failed to create stdout capture");
+        let (stderr_writer, stderr_capture) =
+            tee::tee_stderr().expect("failed to create stderr capture");
 
         let mut params = self.shell.default_exec_params();
-        params.set_fd(1, OpenFile::PipeWriter(writer));
-        params.set_fd(2, OpenFile::PipeWriter(writer_clone));
+        params.set_fd(1, OpenFile::PipeWriter(stdout_writer));
+        params.set_fd(2, OpenFile::PipeWriter(stderr_writer));
 
         // Execute the command.
         let _ = self.shell.run_string(input, &params).await;
 
-        // Close write ends by dropping params, then read captured output.
+        // Drop params to close write ends, then collect captured output.
         drop(params);
-        let mut output = String::new();
-        reader
-            .read_to_string(&mut output)
-            .expect("failed to read command output");
+        let stdout = stdout_capture.collect();
+        let stderr = stderr_capture.collect();
 
-        // Write captured output to the real terminal.
-        print!("{output}");
-        let _ = io::stdout().flush();
-
-        // Record output in the transcript (empty output is ignored by push_output).
-        self.transcript.push_output(&output);
+        // Record stdout and stderr as separate transcript entries.
+        self.transcript.push_output(&stdout);
+        self.transcript.push_error(&stderr);
 
         CommandOutcome {
-            output,
+            stdout,
+            stderr,
             exit_code: self.shell.last_result(),
         }
     }
@@ -97,11 +96,11 @@ impl ClankShell {
         self.transcript.trim(n);
     }
 
-    /// Return the full transcript as a string.
+    /// Return the full transcript formatted with semantic labels for the AI model.
     ///
-    /// This is the value passed to the AI model on each `ask` invocation.
+    /// This is the value passed to the model on each `ask` invocation.
     pub fn transcript_as_string(&self) -> String {
-        self.transcript.as_string()
+        self.transcript.format_for_model()
     }
 
     /// Returns the exit code of the last command run.
@@ -134,8 +133,8 @@ impl ClankShell {
 
 /// Build a new clank shell instance.
 ///
-/// Returns a `ClankShell` with an empty transcript and all clank builtins
-/// registered. This is the primary entry point for shell construction.
+/// Returns a `ClankShell` with a default-budget transcript and all clank
+/// builtins registered. This is the primary entry point for shell construction.
 pub async fn build_shell() -> ClankShell {
     ClankShell::new().await
 }
@@ -144,8 +143,8 @@ pub async fn build_shell() -> ClankShell {
 
 /// Run an interactive read-eval-print loop over stdin until EOF or `exit`.
 ///
-/// Handles `context` commands directly (shell-internal scope — not dispatched
-/// through Brush). All other commands are dispatched through `ClankShell`.
+/// Handles `context` and `model` commands directly (shell-internal scope).
+/// All other commands are dispatched through `ClankShell`.
 ///
 /// The prompt is written to stderr so it does not pollute stdout.
 pub async fn run_repl(mut shell: ClankShell) {
@@ -235,7 +234,6 @@ fn model_list() {
 
 /// `model add <provider> --key <key>` — register a provider and its API key.
 fn model_add(input: &str) {
-    // Parse: "model add <provider> --key <key>"
     let rest = input.trim_start_matches("model add ").trim();
     let parts: Vec<&str> = rest.splitn(3, ' ').collect();
     if parts.len() == 3 && parts[1] == "--key" {
@@ -291,29 +289,25 @@ fn redact_key(key: &str) -> String {
 mod tests {
     use super::*;
 
-    // -- ClankShell construction --
-
     #[tokio::test]
     async fn build_shell_succeeds() {
         let _shell = build_shell().await;
     }
 
-    // -- run_command records transcript --
-
     #[tokio::test]
     async fn run_command_records_command_input() {
         let mut shell = build_shell().await;
         shell.run_command("true").await;
-        let t = shell.transcript_as_string();
+        let t = shell.context_show();
         assert!(t.contains("$ true"), "transcript should contain the command");
     }
 
     #[tokio::test]
-    async fn run_command_records_output() {
+    async fn run_command_records_stdout() {
         let mut shell = build_shell().await;
         shell.run_command("echo hello").await;
-        let t = shell.transcript_as_string();
-        assert!(t.contains("hello"), "transcript should contain command output");
+        let t = shell.context_show();
+        assert!(t.contains("hello"), "transcript should contain stdout");
     }
 
     #[tokio::test]
@@ -330,7 +324,13 @@ mod tests {
         assert_eq!(outcome.exit_code, 1);
     }
 
-    // -- context_show --
+    #[tokio::test]
+    async fn run_command_stdout_and_stderr_are_separate() {
+        let mut shell = build_shell().await;
+        let outcome = shell.run_command("echo hello").await;
+        assert!(outcome.stdout.contains("hello"));
+        assert!(outcome.stderr.is_empty());
+    }
 
     #[tokio::test]
     async fn context_show_returns_transcript() {
@@ -347,10 +347,12 @@ mod tests {
         shell.run_command("echo hi").await;
         let len_before = shell.transcript.len();
         let _ = shell.context_show();
-        assert_eq!(shell.transcript.len(), len_before, "context show must not record itself");
+        assert_eq!(
+            shell.transcript.len(),
+            len_before,
+            "context show must not record itself"
+        );
     }
-
-    // -- context_clear --
 
     #[tokio::test]
     async fn context_clear_empties_transcript() {
@@ -360,18 +362,15 @@ mod tests {
         assert!(shell.transcript.is_empty());
     }
 
-    // -- context_trim --
-
     #[tokio::test]
     async fn context_trim_drops_oldest_entries() {
         let mut shell = build_shell().await;
         shell.run_command("echo first").await;
         shell.run_command("echo second").await;
         let len_before = shell.transcript.len();
-        // Each run_command adds 2 entries (Command + Output).
-        // Trim 2 to remove both entries for "first".
+        // Each run_command adds Command + Output entries (stderr is empty → no Error entry).
         shell.context_trim(2);
         assert!(shell.transcript.len() < len_before);
-        assert!(shell.transcript_as_string().contains("second"));
+        assert!(shell.context_show().contains("second"));
     }
 }
