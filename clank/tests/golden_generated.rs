@@ -17,6 +17,30 @@ fn golden_builtins_echo_hello() {
 }
 
 #[test]
+fn golden_ls_ls_a() {
+    clank_golden::run_embedded(
+        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/golden/ls/ls-a.yaml")),
+        &format!("{}/tests/golden/ls", env!("CARGO_MANIFEST_DIR")),
+    );
+}
+
+#[test]
+fn golden_ls_ls_plain() {
+    clank_golden::run_embedded(
+        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/golden/ls/ls-plain.yaml")),
+        &format!("{}/tests/golden/ls", env!("CARGO_MANIFEST_DIR")),
+    );
+}
+
+#[test]
+fn golden_ls_ls_recursive() {
+    clank_golden::run_embedded(
+        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/golden/ls/ls-recursive.yaml")),
+        &format!("{}/tests/golden/ls", env!("CARGO_MANIFEST_DIR")),
+    );
+}
+
+#[test]
 fn golden_variables_expand_after_assign() {
     clank_golden::run_embedded(
         include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/golden/variables/expand-after-assign.yaml")),

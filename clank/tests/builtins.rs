@@ -97,3 +97,60 @@ fn ls_nonexistent_path_exits_nonzero() {
         .success()
         .stdout(predicates::str::contains("0").not());
 }
+
+// --- ls OS equivalence tests ---
+//
+// These tests verify that clank's internal ls produces output identical to
+// the real OS ls for the same inputs. The fixture directory has known, stable
+// contents committed to git.
+
+/// Absolute path to the ls fixture directory, resolved at compile time.
+fn ls_fixture() -> String {
+    format!(
+        "{}/tests/golden/fixtures/ls-test-dir",
+        env!("CARGO_MANIFEST_DIR")
+    )
+}
+
+/// Run the real OS `ls` with the given args on the fixture and return stdout.
+fn os_ls(args: &[&str]) -> String {
+    let output = std::process::Command::new("ls")
+        .args(args)
+        .output()
+        .expect("failed to spawn OS ls");
+    String::from_utf8_lossy(&output.stdout).into_owned()
+}
+
+/// Run clank's internal `ls` with the given args on the fixture and return stdout.
+fn clank_ls(args: &str) -> String {
+    let script = format!("ls {args}");
+    let output = common::clank()
+        .write_stdin(script)
+        .output()
+        .expect("failed to run clank");
+    String::from_utf8_lossy(&output.stdout).into_owned()
+}
+
+#[test]
+fn ls_plain_matches_os() {
+    let fixture = ls_fixture();
+    let expected = os_ls(&[&fixture]);
+    let actual = clank_ls(&fixture);
+    assert_eq!(actual, expected, "plain ls output differs from OS ls");
+}
+
+#[test]
+fn ls_a_matches_os() {
+    let fixture = ls_fixture();
+    let expected = os_ls(&["-a", &fixture]);
+    let actual = clank_ls(&format!("-a {fixture}"));
+    assert_eq!(actual, expected, "ls -a output differs from OS ls -a");
+}
+
+#[test]
+fn ls_recursive_matches_os() {
+    let fixture = ls_fixture();
+    let expected = os_ls(&["-R", &fixture]);
+    let actual = clank_ls(&format!("-R {fixture}"));
+    assert_eq!(actual, expected, "ls -R output differs from OS ls -R");
+}

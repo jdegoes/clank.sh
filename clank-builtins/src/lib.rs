@@ -1,5 +1,6 @@
 mod echo;
 mod false_cmd;
+mod ls;
 mod true_cmd;
 
 use brush_core::{Shell, builtins::builtin};
@@ -10,8 +11,9 @@ use brush_core::{Shell, builtins::builtin};
 /// Called once during shell construction in `clank::build_shell()`.
 pub fn register(shell: &mut Shell) {
     shell.register_builtin("echo", builtin::<echo::EchoCommand>());
-    shell.register_builtin("true", builtin::<true_cmd::TrueCommand>());
     shell.register_builtin("false", builtin::<false_cmd::FalseCommand>());
+    shell.register_builtin("ls", builtin::<ls::LsCommand>());
+    shell.register_builtin("true", builtin::<true_cmd::TrueCommand>());
 }
 
 #[cfg(test)]
