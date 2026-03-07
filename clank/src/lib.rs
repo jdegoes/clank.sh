@@ -219,6 +219,12 @@ pub async fn run_repl(mut shell: ClankShell, http: Arc<dyn HttpClient>) {
 
                     s if s.starts_with("model default ") => model_set_default(s),
 
+                    s if s == "model" || s.starts_with("model ") => {
+                        eprintln!(
+                            "clank: usage:\n  model add <provider> --key <key>\n  model default <model>\n  model list"
+                        );
+                    }
+
                     s if s == "ask" || s.starts_with("ask ") => {
                         match shell.run_ask(s, &http).await {
                             Ok(response) => {
