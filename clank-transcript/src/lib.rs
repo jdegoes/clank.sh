@@ -90,10 +90,24 @@ impl TranscriptEntry {
         Self::new(EntryKind::AiResponse(text.into()))
     }
 
-    /// Format the entry for display in `context show`.
+    /// Format the entry without a timestamp.
+    ///
+    /// Format: `<kind>: <text>`
+    ///
+    /// This is the default output of `context show`. Timestamps are omitted
+    /// because they are implementation detail noise for most consumers —
+    /// testing, scripting, and human inspection all benefit from the simpler
+    /// form. Use [`display_with_timestamps`] to include them.
+    pub fn display_plain(&self) -> String {
+        format!("{}: {}", self.kind.tag(), self.kind.text())
+    }
+
+    /// Format the entry with a full RFC 3339 timestamp prefix.
     ///
     /// Format: `[<rfc3339-secs>] <kind>: <text>`
-    pub fn display(&self) -> String {
+    ///
+    /// Opt-in via `context show --timestamps`.
+    pub fn display_with_timestamps(&self) -> String {
         let ts = self.timestamp.to_rfc3339_opts(SecondsFormat::Secs, true);
         format!("[{}] {}: {}", ts, self.kind.tag(), self.kind.text())
     }
@@ -345,16 +359,65 @@ mod tests {
     // --- display ---
 
     #[test]
-    fn display_format_is_correct() {
+    fn display_plain_format_is_correct() {
         let entry = TranscriptEntry::command("ls /tmp");
-        let d = entry.display();
-        assert!(d.starts_with('['), "should start with '[': {d}");
-        assert!(d.contains("] command: ls /tmp"), "unexpected format: {d}");
+        assert_eq!(entry.display_plain(), "command: ls /tmp");
     }
 
     #[test]
-    fn display_output_tag() {
+    fn display_plain_output_tag() {
         let entry = TranscriptEntry::output("hello");
-        assert!(entry.display().contains("] output: hello"));
+        assert_eq!(entry.display_plain(), "output: hello");
+    }
+
+    #[test]
+    fn display_with_timestamps_contains_valid_rfc3339() {
+        let before = Utc::now();
+        let entry = TranscriptEntry::command("ls /tmp");
+        let after = Utc::now();
+        let d = entry.display_with_timestamps();
+
+        // Format is: [<rfc3339>] <kind>: <text>
+        // Extract the timestamp between the first '[' and the first ']'.
+        let ts_str = d
+            .strip_prefix('[')
+            .and_then(|s| s.split_once(']'))
+            .map(|(ts, _)| ts)
+            .unwrap_or_else(|| panic!("no bracketed timestamp in: {d:?}"));
+
+        // Parse as RFC 3339 — this fails if the value is not a valid timestamp.
+        let parsed = ts_str
+            .parse::<chrono::DateTime<Utc>>()
+            .unwrap_or_else(|e| panic!("timestamp {ts_str:?} is not valid RFC 3339: {e}"));
+
+        // The formatted timestamp uses second precision (SecondsFormat::Secs),
+        // so truncate the window boundaries to seconds before comparing.
+        use chrono::Timelike as _;
+        let before_secs = before.with_nanosecond(0).unwrap();
+        let after_secs = after.with_nanosecond(0).unwrap();
+        assert!(
+            parsed >= before_secs && parsed <= after_secs,
+            "timestamp {parsed} is outside expected window [{before_secs}, {after_secs}]"
+        );
+    }
+
+    #[test]
+    fn display_with_timestamps_suffix_is_correct() {
+        let entry = TranscriptEntry::command("ls /tmp");
+        let d = entry.display_with_timestamps();
+        assert!(
+            d.ends_with("] command: ls /tmp"),
+            "expected suffix '] command: ls /tmp' in: {d:?}"
+        );
+    }
+
+    #[test]
+    fn display_with_timestamps_output_tag() {
+        let entry = TranscriptEntry::output("hello");
+        let d = entry.display_with_timestamps();
+        assert!(
+            d.ends_with("] output: hello"),
+            "expected suffix '] output: hello' in: {d:?}"
+        );
     }
 }

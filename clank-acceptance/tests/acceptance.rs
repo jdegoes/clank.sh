@@ -106,6 +106,25 @@ struct TestCase {
     /// If absent, stdout is not checked for containment.
     expect_stdout_contains: Option<String>,
 
+    /// A list of substrings that must all appear somewhere in stdout.
+    /// Every entry in the list is checked independently; all must match.
+    /// Use this to assert multiple distinct strings in a single test case
+    /// without needing to duplicate the stdin script.
+    #[serde(default)]
+    expect_stdout_contains_all: Vec<String>,
+
+    /// A list of glob-style patterns where each pattern must match at least
+    /// one complete line in stdout. `*` in a pattern matches any sequence of
+    /// characters within a line (it does not cross newline boundaries).
+    ///
+    /// Example — assert a timestamped transcript line:
+    ///
+    ///   expect_stdout_line_matches:
+    ///     - "[*] command: echo hello"
+    ///     - "[*] output: hello"
+    #[serde(default)]
+    expect_stdout_line_matches: Vec<String>,
+
     /// If `true`, assert that stderr is completely empty.
     /// If `false` (the default), stderr is not checked.
     #[serde(default)]
@@ -119,6 +138,35 @@ struct TestCase {
     /// If `true`, the test is skipped entirely (not executed).
     #[serde(default)]
     skip: bool,
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/// Returns `true` if `line` matches `pattern`, where `*` in the pattern
+/// matches any sequence of characters (but does not cross line boundaries).
+///
+/// Implemented by splitting the pattern on `*` and checking that the
+/// resulting segments appear in order within the line.
+fn glob_match(pattern: &str, line: &str) -> bool {
+    let mut segments = pattern.split('*');
+    let first = segments.next().unwrap_or("");
+    if !line.starts_with(first) {
+        return false;
+    }
+    let mut pos = first.len();
+    for segment in segments {
+        if segment.is_empty() {
+            // A trailing `*` or consecutive `**` — always matches remaining.
+            continue;
+        }
+        match line[pos..].find(segment) {
+            Some(offset) => pos += offset + segment.len(),
+            None => return false,
+        }
+    }
+    true
 }
 
 // ---------------------------------------------------------------------------
@@ -224,6 +272,25 @@ fn run_case(suite_name: &str, case: &TestCase) -> Result<(), String> {
         }
     }
 
+    // --- stdout contains all ---
+    for needle in &case.expect_stdout_contains_all {
+        if !stdout.contains(needle.as_str()) {
+            errors.push(format!(
+                "  stdout does not contain {needle:?}\n    got: {stdout:?}"
+            ));
+        }
+    }
+
+    // --- stdout line matches ---
+    for pattern in &case.expect_stdout_line_matches {
+        let matched = stdout.lines().any(|line| glob_match(pattern, line));
+        if !matched {
+            errors.push(format!(
+                "  no stdout line matches pattern {pattern:?}\n    got: {stdout:?}"
+            ));
+        }
+    }
+
     // --- stderr empty ---
     if case.expect_stderr_empty && !output.stderr.is_empty() {
         errors.push(format!("  stderr expected empty, got: {stderr:?}"));
@@ -238,6 +305,59 @@ fn run_case(suite_name: &str, case: &TestCase) -> Result<(), String> {
             errors.join("\n")
         ))
     }
+}
+
+// ---------------------------------------------------------------------------
+// Harness registration
+// ---------------------------------------------------------------------------
+
+// Unit tests for glob_match — registered directly with the datatest harness.
+// These functions are prefixed so they're visually distinct from suite runners.
+
+#[test]
+fn unit_glob_match_no_wildcard() {
+    assert!(glob_match("hello", "hello"));
+    assert!(!glob_match("hello", "world"));
+}
+
+#[test]
+fn unit_glob_match_leading_wildcard() {
+    assert!(glob_match(
+        "*] command: ls",
+        "[2026-03-07T12:00:00Z] command: ls"
+    ));
+    assert!(!glob_match(
+        "*] command: ls",
+        "[2026-03-07T12:00:00Z] command: echo"
+    ));
+}
+
+#[test]
+fn unit_glob_match_brackets_around_timestamp() {
+    assert!(glob_match(
+        "[*] command: echo hello",
+        "[2026-03-07T14:00:00Z] command: echo hello"
+    ));
+    assert!(!glob_match(
+        "[*] command: echo hello",
+        "2026-03-07T14:00:00Z command: echo hello"
+    ));
+}
+
+#[test]
+fn unit_glob_match_trailing_wildcard() {
+    assert!(glob_match("command: echo*", "command: echo hello world"));
+}
+
+#[test]
+fn unit_glob_match_empty_pattern_matches_empty() {
+    assert!(glob_match("", ""));
+}
+
+#[test]
+fn unit_glob_match_star_only_matches_anything() {
+    assert!(glob_match("*", "anything at all"));
+    assert!(glob_match("*", ""));
 }
 
 // ---------------------------------------------------------------------------

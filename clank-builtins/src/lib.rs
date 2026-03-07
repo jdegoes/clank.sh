@@ -194,11 +194,17 @@ impl SimpleCommand for ContextBuiltin {
 
         match subcommand.as_ref() {
             "show" => {
+                let timestamps = args.any(|a| a.as_ref() == "--timestamps");
                 let transcript = clank_transcript::global();
                 let locked = transcript.lock().unwrap_or_else(|e| e.into_inner());
                 let mut stdout = context.stdout();
                 for entry in locked.entries() {
-                    writeln!(stdout, "{}", entry.display()).ok();
+                    let line = if timestamps {
+                        entry.display_with_timestamps()
+                    } else {
+                        entry.display_plain()
+                    };
+                    writeln!(stdout, "{line}").ok();
                 }
                 Ok(ExecutionResult::success())
             }

@@ -17,53 +17,67 @@ cases:
     expect_stdout: ""
     expect_stderr_empty: true
 
-  - name: show_reflects_prior_command
-    # echo hello runs first; context show sees it in the transcript.
+  - name: show_reflects_prior_command_and_output
+    # echo hello runs first; context show sees both the command entry and the
+    # captured output entry. Both must appear in stdout.
     stdin: |
       echo hello
       context show
     expect_exit: 0
-    expect_stdout_contains: "command: echo hello"
+    expect_stdout_contains_all:
+      - "command: echo hello"
+      - "output: hello"
     expect_stderr_empty: true
 
-  - name: show_reflects_prior_output
-    # Output from echo hello is captured and recorded; context show shows it.
-    stdin: |
-      echo hello
-      context show
-    expect_exit: 0
-    expect_stdout_contains: "output: hello"
-    expect_stderr_empty: true
-
-  - name: show_entry_format_has_timestamp_and_kind
-    # Every line from context show is: [<rfc3339>] <kind>: <text>
+  - name: show_plain_format_has_kind_tag
+    # Default context show omits timestamps: output is <kind>: <text>
     stdin: |
       echo marker
       context show
     expect_exit: 0
-    expect_stdout_contains: "] command: echo marker"
+    expect_stdout_contains_all:
+      - "command: echo marker"
+      - "output: marker"
+    expect_stderr_empty: true
+
+  - name: show_timestamps_flag_adds_rfc3339_prefix
+    # context show --timestamps adds [<rfc3339>] prefix to every entry.
+    # Pattern [*] matches the bracketed timestamp regardless of its value.
+    stdin: |
+      echo marker
+      context show --timestamps
+    expect_exit: 0
+    expect_stdout_line_matches:
+      - "[*] command: echo marker"
+      - "[*] output: marker"
     expect_stderr_empty: true
 
   - name: show_multiple_prior_commands
-    # Both prior commands are visible in show output.
+    # Both prior commands and their outputs are visible in show output.
     stdin: |
       echo a
       echo b
       context show
     expect_exit: 0
-    expect_stdout_contains: "command: echo a"
+    expect_stdout_contains_all:
+      - "command: echo a"
+      - "output: a"
+      - "command: echo b"
+      - "output: b"
     expect_stderr_empty: true
 
   - name: show_output_not_re_recorded
     # context show's own output must not appear as an output: entry.
     # If re-recorded, a second context show would contain "] output:" lines
-    # from the first show. Verify the output never contains "] output: [".
+    # from the first show. Both shows must still contain the echo entry.
     stdin: |
       echo hello
       context show
       context show
     expect_exit: 0
-    expect_stdout_contains: "command: echo hello"
+    expect_stdout_contains_all:
+      - "command: echo hello"
+      - "output: hello"
     expect_stderr_empty: true
 
   # ---------------------------------------------------------------------------
@@ -129,36 +143,31 @@ cases:
     expect_exit: 0
     expect_stderr_empty: true
 
-  - name: trim_removes_oldest_entry
-    # context trim is self-erasing. After: echo a, echo b, trim 1, context show:
-    # trim removes Command(echo a) — the oldest entry. context show sees the
-    # remaining entries but not "command: echo a".
+  - name: trim_removes_oldest_entries
+    # context trim is self-erasing. After: echo a, echo b, trim 2, context show:
+    # trim removes Command(echo a) and Output(a) — the two oldest entries.
+    # context show sees only the echo b entries.
     stdin: |
       echo a
       echo b
-      context trim 1
+      context trim 2
       context show
     expect_exit: 0
-    expect_stdout_contains: "command: echo b"
-    expect_stderr_empty: true
-
-  - name: trim_removed_entry_is_absent
-    stdin: |
-      echo a
-      echo b
-      context trim 1
-      context show
-    expect_exit: 0
+    expect_stdout_contains_all:
+      - "command: echo b"
+      - "output: b"
     expect_stderr_empty: true
 
   - name: trim_zero_is_noop
-    # trim 0 does nothing; context show still sees echo a.
+    # trim 0 does nothing; context show still sees both entries for echo a.
     stdin: |
       echo a
       context trim 0
       context show
     expect_exit: 0
-    expect_stdout_contains: "command: echo a"
+    expect_stdout_contains_all:
+      - "command: echo a"
+      - "output: a"
     expect_stderr_empty: true
 
   - name: trim_all_then_show_empty
