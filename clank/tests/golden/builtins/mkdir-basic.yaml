@@ -1,0 +1,6 @@
+description: mkdir creates a directory and ls confirms it
+script: |
+  mkdir /tmp/clank-test-mkdir-dir
+  ls /tmp/clank-test-mkdir-dir
+  rm -r /tmp/clank-test-mkdir-dir
+stdout: ""

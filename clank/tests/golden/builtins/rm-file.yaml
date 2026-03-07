@@ -1,0 +1,7 @@
+description: rm removes a file
+script: |
+  touch /tmp/clank-test-rm-file.txt
+  rm /tmp/clank-test-rm-file.txt
+  echo "done"
+stdout: |
+  done

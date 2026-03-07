@@ -1,0 +1,6 @@
+description: wc -l counts lines
+script: |
+  printf "one\ntwo\nthree\n" > /tmp/clank-test-wc.txt
+  wc -l /tmp/clank-test-wc.txt
+  rm /tmp/clank-test-wc.txt
+stdout: "       3 /tmp/clank-test-wc.txt\n"

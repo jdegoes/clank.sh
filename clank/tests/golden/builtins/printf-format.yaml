@@ -1,0 +1,5 @@
+description: printf formats string and integer arguments
+script: |
+  printf "hello %s, you have %d items\n" world 42
+stdout: |
+  hello world, you have 42 items

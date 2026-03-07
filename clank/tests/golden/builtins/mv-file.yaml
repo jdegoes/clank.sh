@@ -1,0 +1,8 @@
+description: mv renames a file
+script: |
+  echo "data" > /tmp/clank-test-mv-src.txt
+  mv /tmp/clank-test-mv-src.txt /tmp/clank-test-mv-dst.txt
+  cat /tmp/clank-test-mv-dst.txt
+  rm /tmp/clank-test-mv-dst.txt
+stdout: |
+  data
