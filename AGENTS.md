@@ -6,7 +6,24 @@ clank.sh is an AI-native shell targeting `wasm32-wasip2` and native Rust. See `R
 
 ## Build & Test
 
-_To be filled in._
+Run from the workspace root:
+
+- `cargo build`
+- `cargo test`
+- `cargo clippy --all-targets -- -D warnings`
+
+## Testing
+
+Every feature and bug fix must have tests at all applicable levels.
+
+| Layer | Location | Use for |
+|---|---|---|
+| Unit | `clank/src/**/#[cfg(test)]` | Internal logic, private functions. Use `#[tokio::test]` for async. |
+| Integration | `clank/tests/<concern>.rs` | Public shell behaviour via process spawn (`assert_cmd`). Shared helpers in `clank/tests/common/mod.rs`. |
+| System | `clank/tests/system.rs` | Multi-step scenarios with shared shell state. Name tests `scenario_*`. |
+
+New builtins or shell features → add to the relevant `clank/tests/<concern>.rs` or create one.
+New multi-step compositions → add a `scenario_*` test to `clank/tests/system.rs`.
 
 ## Code Conventions
 
