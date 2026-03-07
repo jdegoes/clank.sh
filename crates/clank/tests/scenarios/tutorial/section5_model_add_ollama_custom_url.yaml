@@ -1,0 +1,9 @@
+desc: "Tutorial §5 — model add ollama with a custom URL writes that URL to config"
+stdin: |
+  model add ollama --url http://192.168.1.10:11434
+stdout: "$ Provider 'ollama' configured.\n$ "
+stderr: ''
+config_after:
+  providers:
+    ollama:
+      base_url: "http://192.168.1.10:11434"

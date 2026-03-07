@@ -1,0 +1,4 @@
+desc: context clear succeeds silently
+stdin: |
+  context clear
+stdout: '$ $ '

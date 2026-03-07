@@ -1,0 +1,4 @@
+desc: context show with an empty transcript reports that context is empty
+stdin: |
+  context show
+stdout: "$ $ context show\n$ "

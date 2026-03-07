@@ -1,0 +1,8 @@
+desc: "Tutorial §5 — model default sets the default model; bare model default shows it"
+stdin: |
+  model default anthropic/claude-haiku-3-5
+  model default
+stdout: "$ Default model set to 'anthropic/claude-haiku-3-5'.\n$ anthropic/claude-haiku-3-5\n$ "
+stderr: ''
+config_after:
+  default_model: "anthropic/claude-haiku-3-5"

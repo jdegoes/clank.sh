@@ -1,0 +1,9 @@
+desc: "Tutorial §5 — model add anthropic writes the key and confirms to stdout"
+stdin: |
+  model add anthropic --key sk-ant-test-key
+stdout: "$ Provider 'anthropic' configured.\n$ "
+stderr: ''
+config_after:
+  providers:
+    anthropic:
+      api_key: sk-ant-test-key

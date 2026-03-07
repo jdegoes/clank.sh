@@ -1,0 +1,28 @@
+[package]
+name = "clank-shell"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clank-ask = { workspace = true }
+clank-http = { workspace = true }
+clank-vfs = { workspace = true }
+clank-manifest = { workspace = true }
+brush-core = { workspace = true }
+brush-parser = { workspace = true }
+brush-builtins = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+futures = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tempfile = "3"
+dirs-next = "2"
+rpassword = "7"
+toml = { workspace = true }
+serde_json = { workspace = true }
+termimad = "0.23"
+
+[dev-dependencies]
+serde_json = { workspace = true }

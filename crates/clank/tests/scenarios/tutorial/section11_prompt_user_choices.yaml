@@ -1,0 +1,5 @@
+desc: "Tutorial §11 — prompt-user --choices accepts a valid choice and exits 0"
+stdin: |
+  echo "yes" | prompt-user --choices yes,no "Are you sure?"
+stdout: "$ yes\n$ "
+stderr: "\nyes,no Are you sure?\nOptions: yes, no\n> "

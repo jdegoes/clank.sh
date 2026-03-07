@@ -1,0 +1,13 @@
+desc: model list after adding ollama and openai-compat shows both providers with base_url
+stdin: |
+  model add ollama
+  model add openai-compat --url http://localhost:8080
+  model list
+stdout: "$ Provider 'ollama' configured.\n$ Provider 'openai-compat' configured.\n$ Default model: anthropic/claude-sonnet-4-5\n\nProviders:\n  ollama: base_url=http://localhost:11434\n  openai-compat: base_url=http://localhost:8080\n$ "
+stderr: ''
+config_after:
+  providers:
+    ollama:
+      base_url: http://localhost:11434
+    openai-compat:
+      base_url: http://localhost:8080

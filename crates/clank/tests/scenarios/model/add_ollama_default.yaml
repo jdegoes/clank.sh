@@ -1,0 +1,9 @@
+desc: model add ollama with no --url writes the default base_url and confirms to stdout
+stdin: |
+  model add ollama
+stdout: "$ Provider 'ollama' configured.\n$ "
+stderr: ''
+config_after:
+  providers:
+    ollama:
+      base_url: http://localhost:11434

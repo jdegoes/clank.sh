@@ -1,0 +1,6 @@
+desc: "Tutorial §9 — sudo rm typed by the user strips the prefix and runs rm; exits 1 not 5"
+# We assert stdout is just the prompts — rm ran (no 'requires sudo authorization' on stdout).
+# The exit code contract (1 not 5) is covered by the Level 2 authorization tests.
+stdin: |
+  sudo rm nonexistent-sudo-file.txt
+stdout: "$ $ "

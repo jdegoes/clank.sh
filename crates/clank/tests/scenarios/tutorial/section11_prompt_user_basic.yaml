@@ -1,0 +1,5 @@
+desc: "Tutorial §11 — prompt-user captures a response and writes it to stdout"
+stdin: |
+  echo "main" | prompt-user "Which branch?"
+stdout: "$ main\n$ "
+stderr: "\nWhich branch?\n> "

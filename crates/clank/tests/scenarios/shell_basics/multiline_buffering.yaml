@@ -1,0 +1,7 @@
+desc: multi-line if/then/fi is buffered correctly and produces the right output
+stdin: |
+  if true; then
+  echo "multiline"
+  fi
+stdout: "$ > > multiline\n$ "
+stderr: ''

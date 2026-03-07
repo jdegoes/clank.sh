@@ -1,0 +1,50 @@
+[workspace]
+members = [
+    "crates/clank",
+    "crates/clank-shell",
+    "crates/clank-http",
+    "crates/clank-vfs",
+    "crates/clank-ask",
+    "crates/clank-manifest",
+    "crates/clank-golem",
+    "crates/clank-grease",
+]
+resolver = "2"
+
+[workspace.dependencies]
+# Async
+tokio = { version = "1", features = ["full"] }
+async-trait = "0.1"
+futures = "0.3"
+
+# Error handling
+anyhow = "1"
+thiserror = "2"
+
+# Brush
+brush-core = "0.4"
+brush-parser = "0.3"
+brush-builtins = "0.1"
+
+# HTTP
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+
+# Logging / tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Serialisation
+serde_json = "1"
+toml = "0.8"
+
+# Test utilities
+tokio-test = "0.4"
+
+# Internal crates
+clank-shell = { path = "crates/clank-shell" }
+clank-http = { path = "crates/clank-http" }
+clank-vfs = { path = "crates/clank-vfs" }
+clank-ask = { path = "crates/clank-ask" }
+clank-manifest = { path = "crates/clank-manifest" }
+clank-golem = { path = "crates/clank-golem" }
+clank-grease = { path = "crates/clank-grease" }

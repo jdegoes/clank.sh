@@ -1,0 +1,11 @@
+[package]
+name = "clank-grease"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clank-http = { workspace = true }
+clank-manifest = { workspace = true }
+clank-vfs = { workspace = true }
+async-trait = { workspace = true }
+anyhow = { workspace = true }

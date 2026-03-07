@@ -1,0 +1,5 @@
+desc: OS-fallthrough command output is captured into the transcript and visible in context show
+stdin: |
+  /bin/echo "hello from os"
+  context show
+stdout: "$ hello from os\n$ $ /bin/echo \"hello from os\"\nhello from os\n$ context show\n$ "
