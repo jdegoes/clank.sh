@@ -320,3 +320,66 @@ async fn run_and_run_interactive_share_the_same_transcript() {
         ]
     );
 }
+
+// ---------------------------------------------------------------------------
+// Redaction
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn aws_key_in_command_is_redacted() {
+    let _guard = setup().await;
+    run("echo AKIA1234567890ABCDEF")
+        .await
+        .expect("run should not error");
+    let e = entries();
+    // Command entry must not contain the raw key.
+    assert!(
+        !e.iter().any(|(_, v)| v.contains("AKIA1234567890ABCDEF")),
+        "raw AWS key should be redacted; got {e:?}"
+    );
+    assert!(
+        e.iter().any(|(_, v)| v.contains("[REDACTED]")),
+        "redaction marker should be present; got {e:?}"
+    );
+}
+
+#[tokio::test]
+async fn env_var_password_in_output_is_redacted() {
+    let _guard = setup().await;
+    // run() uses interactive mode which captures output.
+    // In script mode output is not captured, so use run_interactive.
+    let mut shell = Shell::new(interactive_options())
+        .await
+        .expect("shell creation should not error");
+    run_interactive(
+        &mut shell,
+        b"echo DB_PASSWORD=hunter2\n" as &[u8],
+        std::io::sink(),
+    )
+    .await
+    .expect("run_interactive should not error");
+    let e = entries();
+    assert!(
+        !e.iter().any(|(_, v)| v.contains("hunter2")),
+        "password value should be redacted; got {e:?}"
+    );
+    assert!(
+        e.iter().any(|(_, v)| v.contains("[REDACTED]")),
+        "redaction marker should be present; got {e:?}"
+    );
+}
+
+#[tokio::test]
+async fn normal_content_is_not_redacted() {
+    let _guard = setup().await;
+    run("echo hello").await.expect("run should not error");
+    let e = entries();
+    assert!(
+        e.iter().any(|(_, v)| v.contains("hello")),
+        "normal content should not be redacted; got {e:?}"
+    );
+    assert!(
+        !e.iter().any(|(_, v)| v.contains("[REDACTED]")),
+        "redaction marker should not appear for normal content; got {e:?}"
+    );
+}

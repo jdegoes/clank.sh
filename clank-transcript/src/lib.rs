@@ -20,6 +20,9 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 use chrono::{DateTime, SecondsFormat, Utc};
 
+pub mod redactor;
+pub use redactor::Redactor;
+
 /// Default maximum number of entries the sliding window holds before the
 /// oldest entry is evicted on each new [`Transcript::push`].
 pub const DEFAULT_MAX_ENTRIES: usize = 1000;
@@ -121,23 +124,37 @@ impl TranscriptEntry {
 ///
 /// When the window reaches `max_entries` capacity, the oldest entry is
 /// silently evicted to make room for each new [`Transcript::push`].
+///
+/// Every entry is passed through the owned [`Redactor`] before storage.
+/// Use [`Transcript::with_redactor`] to supply a custom redactor (e.g.
+/// [`Redactor::none`] in tests to avoid false positives on synthetic data).
 pub struct Transcript {
     entries: VecDeque<TranscriptEntry>,
     max_entries: usize,
+    redactor: Redactor,
 }
 
 impl Transcript {
-    /// Create a new transcript with the given entry capacity.
+    /// Create a new transcript with [`Redactor::default`] and the given
+    /// entry capacity.
     pub fn new(max_entries: usize) -> Self {
+        Self::with_redactor(max_entries, Redactor::default())
+    }
+
+    /// Create a new transcript with an explicit [`Redactor`].
+    pub fn with_redactor(max_entries: usize, redactor: Redactor) -> Self {
         Self {
             entries: VecDeque::new(),
             max_entries,
+            redactor,
         }
     }
 
-    /// Append an entry. If the window is at capacity, the oldest entry is
-    /// dropped first.
+    /// Append an entry after scrubbing its text through the redactor.
+    ///
+    /// If the window is at capacity, the oldest entry is dropped first.
     pub fn push(&mut self, entry: TranscriptEntry) {
+        let entry = self.redactor.scrub_entry(entry);
         if self.entries.len() == self.max_entries {
             self.entries.pop_front();
         }

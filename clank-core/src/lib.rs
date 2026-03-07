@@ -195,10 +195,24 @@ async fn run_statement(
     // context show and context summarize must not record their output back, but
     // their invocation is still recorded as a command entry.
     if !is_self_erasing_command(cmd) {
+        // Apply manifest redaction_rules: extract values of declared-secret
+        // arguments and scrub them from the command text before recording.
+        let cmd_text = {
+            let first_word = cmd.split_whitespace().next().unwrap_or("");
+            let rules = clank_builtins::redaction_rules_of(first_word);
+            if rules.is_empty() {
+                cmd.to_owned()
+            } else {
+                let secret_values = extract_flag_values(cmd, rules);
+                let refs: Vec<&str> = secret_values.iter().map(String::as_str).collect();
+                clank_transcript::Redactor::none().scrub_literals(cmd, &refs)
+            }
+        };
+
         clank_transcript::global()
             .lock()
             .unwrap_or_else(|e| e.into_inner())
-            .push(TranscriptEntry::command(cmd));
+            .push(TranscriptEntry::command(&cmd_text));
 
         if !captured.is_empty() && !is_inspection_command(cmd) {
             clank_transcript::global()
@@ -295,6 +309,36 @@ fn is_self_erasing_command(cmd: &str) -> bool {
         || trimmed.starts_with("context clear ")
         || trimmed == "context trim"
         || trimmed.starts_with("context trim ")
+}
+
+/// Extract the values of named flag arguments from `cmd` for the given
+/// `rules` (flag names, e.g. `["--key", "--token"]`).
+///
+/// Handles both `--flag=value` and `--flag value` forms. Returns the values
+/// found so they can be passed to `scrub_literals`.
+fn extract_flag_values(cmd: &str, rules: &[&str]) -> Vec<String> {
+    let mut values = Vec::new();
+    let tokens: Vec<&str> = cmd.split_whitespace().collect();
+    for (i, token) in tokens.iter().enumerate() {
+        for &rule in rules {
+            // --flag=value form
+            let prefix = format!("{rule}=");
+            if let Some(val) = token.strip_prefix(&prefix) {
+                if !val.is_empty() {
+                    values.push(val.to_owned());
+                }
+            }
+            // --flag value form
+            if *token == rule {
+                if let Some(val) = tokens.get(i + 1) {
+                    if !val.starts_with('-') {
+                        values.push(val.to_string());
+                    }
+                }
+            }
+        }
+    }
+    values
 }
 
 /// Returns `true` if `cmd` is a transcript-inspection command whose output
