@@ -25,6 +25,21 @@ Every feature and bug fix must have tests at all applicable levels.
 New builtins or shell features → add to the relevant `clank/tests/<concern>.rs` or create one.
 New multi-step compositions → add a `scenario_*` test to `clank/tests/system.rs`.
 
+### Behavioural equivalence for internal command implementations
+
+Every command implemented internally in `clank-builtins` must produce output
+behaviorally equivalent to the corresponding OS command for the same inputs.
+Golden tests enforce this: expected output is derived from what the real OS command
+produces, and the internal implementation must match it. Any divergence in listing,
+formatting, ordering, or exit code is a test failure.
+
+### WASM compatibility
+
+All code in `clank-builtins` and all dependencies it introduces must compile to
+`wasm32-wasip2`. Do not introduce crates that depend on `nix`, `libc`, OS process
+spawning, or Unix-only system calls. Use `std::fs`, `std::io`, and WASM-compatible
+crates only. Gate any Unix-specific code behind `#[cfg(unix)]`.
+
 ## Code Conventions
 
 _To be filled in._
