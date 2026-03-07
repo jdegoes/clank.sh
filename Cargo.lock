@@ -437,6 +437,7 @@ dependencies = [
  "brush-builtins",
  "brush-core",
  "brush-parser",
+ "chrono",
  "clank-builtins",
  "clank-transcript",
  "tokio",
@@ -461,6 +462,9 @@ dependencies = [
 [[package]]
 name = "clank-transcript"
 version = "0.1.0"
+dependencies = [
+ "chrono",
+]
 
 [[package]]
 name = "clap"

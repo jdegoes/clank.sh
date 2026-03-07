@@ -1,6 +1,8 @@
 //! clank-transcript — the shell's sliding-window transcript.
 //!
-//! Owns the [`Transcript`] type and the process-global accessor [`global`].
+//! Owns the [`Transcript`], [`TranscriptEntry`], and [`EntryKind`] types, and
+//! the process-global accessor [`global`].
+//!
 //! Both `clank-core` (recording) and `clank-builtins` (`context` builtin)
 //! depend on this crate to avoid a circular dependency between those two.
 //!
@@ -16,17 +18,97 @@
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex, OnceLock};
 
+use chrono::{DateTime, SecondsFormat, Utc};
+
 /// Default maximum number of entries the sliding window holds before the
 /// oldest entry is evicted on each new [`Transcript::push`].
 pub const DEFAULT_MAX_ENTRIES: usize = 1000;
 
+// ---------------------------------------------------------------------------
+// Entry types
+// ---------------------------------------------------------------------------
+
+/// The kind of content a [`TranscriptEntry`] represents.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum EntryKind {
+    /// A command typed by the user or executed by the shell.
+    Command(String),
+    /// Captured stdout from a command.
+    Output(String),
+    /// A response from an AI model via `ask`. Not yet produced by any
+    /// current code path; present for type completeness.
+    AiResponse(String),
+}
+
+impl EntryKind {
+    /// The lowercase string tag used when formatting the entry for display.
+    pub fn tag(&self) -> &'static str {
+        match self {
+            EntryKind::Command(_) => "command",
+            EntryKind::Output(_) => "output",
+            EntryKind::AiResponse(_) => "ai_response",
+        }
+    }
+
+    /// The text content of the entry.
+    pub fn text(&self) -> &str {
+        match self {
+            EntryKind::Command(s) | EntryKind::Output(s) | EntryKind::AiResponse(s) => s,
+        }
+    }
+}
+
+/// A single entry in the shell transcript, with timestamp and kind.
+#[derive(Debug, Clone)]
+pub struct TranscriptEntry {
+    /// When the entry was recorded, in UTC.
+    pub timestamp: DateTime<Utc>,
+    /// The kind and content of the entry.
+    pub kind: EntryKind,
+}
+
+impl TranscriptEntry {
+    fn new(kind: EntryKind) -> Self {
+        Self {
+            timestamp: Utc::now(),
+            kind,
+        }
+    }
+
+    /// Create a `Command` entry timestamped now.
+    pub fn command(text: impl Into<String>) -> Self {
+        Self::new(EntryKind::Command(text.into()))
+    }
+
+    /// Create an `Output` entry timestamped now.
+    pub fn output(text: impl Into<String>) -> Self {
+        Self::new(EntryKind::Output(text.into()))
+    }
+
+    /// Create an `AiResponse` entry timestamped now.
+    pub fn ai_response(text: impl Into<String>) -> Self {
+        Self::new(EntryKind::AiResponse(text.into()))
+    }
+
+    /// Format the entry for display in `context show`.
+    ///
+    /// Format: `[<rfc3339-secs>] <kind>: <text>`
+    pub fn display(&self) -> String {
+        let ts = self.timestamp.to_rfc3339_opts(SecondsFormat::Secs, true);
+        format!("[{}] {}: {}", ts, self.kind.tag(), self.kind.text())
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Transcript
+// ---------------------------------------------------------------------------
+
 /// A bounded sliding window of shell transcript entries.
 ///
-/// Each entry is a string appended at a `run_string` call site — typically
-/// the command text typed or executed. When the window reaches `max_entries`
-/// capacity, the oldest entry is silently dropped to make room.
+/// When the window reaches `max_entries` capacity, the oldest entry is
+/// silently evicted to make room for each new [`Transcript::push`].
 pub struct Transcript {
-    entries: VecDeque<String>,
+    entries: VecDeque<TranscriptEntry>,
     max_entries: usize,
 }
 
@@ -41,11 +123,11 @@ impl Transcript {
 
     /// Append an entry. If the window is at capacity, the oldest entry is
     /// dropped first.
-    pub fn push(&mut self, entry: impl Into<String>) {
+    pub fn push(&mut self, entry: TranscriptEntry) {
         if self.entries.len() == self.max_entries {
             self.entries.pop_front();
         }
-        self.entries.push_back(entry.into());
+        self.entries.push_back(entry);
     }
 
     /// Discard all entries.
@@ -61,8 +143,8 @@ impl Transcript {
     }
 
     /// Iterate over all entries in order from oldest to newest.
-    pub fn entries(&self) -> impl Iterator<Item = &str> {
-        self.entries.iter().map(String::as_str)
+    pub fn entries(&self) -> impl Iterator<Item = &TranscriptEntry> {
+        self.entries.iter()
     }
 
     /// Number of entries currently in the window.
@@ -101,17 +183,19 @@ pub fn global() -> Arc<Mutex<Transcript>> {
 mod tests {
     use super::*;
 
-    // --- push / entries ---
-
-    #[test]
-    fn push_appends_in_order() {
-        let mut t = Transcript::new(10);
-        t.push("a");
-        t.push("b");
-        t.push("c");
-        let got: Vec<&str> = t.entries().collect();
-        assert_eq!(got, vec!["a", "b", "c"]);
+    fn cmd(s: &str) -> TranscriptEntry {
+        TranscriptEntry::command(s)
     }
+
+    fn out(s: &str) -> TranscriptEntry {
+        TranscriptEntry::output(s)
+    }
+
+    fn kinds(t: &Transcript) -> Vec<EntryKind> {
+        t.entries().map(|e| e.kind.clone()).collect()
+    }
+
+    // --- construction ---
 
     #[test]
     fn new_transcript_is_empty() {
@@ -120,39 +204,81 @@ mod tests {
         assert_eq!(t.len(), 0);
     }
 
+    #[test]
+    fn entry_timestamp_is_set() {
+        let before = Utc::now();
+        let entry = TranscriptEntry::command("ls");
+        let after = Utc::now();
+        assert!(entry.timestamp >= before);
+        assert!(entry.timestamp <= after);
+    }
+
+    #[test]
+    fn entry_kind_constructors() {
+        assert_eq!(
+            TranscriptEntry::command("ls").kind,
+            EntryKind::Command("ls".into())
+        );
+        assert_eq!(
+            TranscriptEntry::output("hello").kind,
+            EntryKind::Output("hello".into())
+        );
+        assert_eq!(
+            TranscriptEntry::ai_response("sure").kind,
+            EntryKind::AiResponse("sure".into())
+        );
+    }
+
+    // --- push / entries ---
+
+    #[test]
+    fn push_appends_in_order() {
+        let mut t = Transcript::new(10);
+        t.push(cmd("a"));
+        t.push(out("b"));
+        t.push(cmd("c"));
+        let got = kinds(&t);
+        assert_eq!(
+            got,
+            vec![
+                EntryKind::Command("a".into()),
+                EntryKind::Output("b".into()),
+                EntryKind::Command("c".into()),
+            ]
+        );
+    }
+
     // --- sliding-window eviction ---
 
     #[test]
     fn push_evicts_oldest_at_capacity() {
         let mut t = Transcript::new(3);
-        t.push("a");
-        t.push("b");
-        t.push("c");
-        t.push("d"); // "a" should be evicted
-        let got: Vec<&str> = t.entries().collect();
-        assert_eq!(got, vec!["b", "c", "d"]);
+        t.push(cmd("a"));
+        t.push(cmd("b"));
+        t.push(cmd("c"));
+        t.push(cmd("d")); // "a" should be evicted
+        let texts: Vec<&str> = t.entries().map(|e| e.kind.text()).collect();
+        assert_eq!(texts, vec!["b", "c", "d"]);
     }
 
     #[test]
     fn push_to_capacity_does_not_evict() {
         let mut t = Transcript::new(3);
-        t.push("a");
-        t.push("b");
-        t.push("c");
+        t.push(cmd("a"));
+        t.push(cmd("b"));
+        t.push(cmd("c"));
         assert_eq!(t.len(), 3);
-        let got: Vec<&str> = t.entries().collect();
-        assert_eq!(got, vec!["a", "b", "c"]);
     }
 
     #[test]
     fn repeated_push_beyond_capacity_keeps_newest() {
         let mut t = Transcript::new(2);
         for i in 0..10usize {
-            t.push(i.to_string());
+            t.push(cmd(&i.to_string()));
         }
         assert_eq!(t.len(), 2);
-        let got: Vec<&str> = t.entries().collect();
-        assert_eq!(got, vec!["8", "9"]);
+        let texts: Vec<&str> = t.entries().map(|e| e.kind.text()).collect();
+        assert_eq!(texts, vec!["8", "9"]);
     }
 
     // --- clear ---
@@ -160,8 +286,8 @@ mod tests {
     #[test]
     fn clear_removes_all_entries() {
         let mut t = Transcript::new(10);
-        t.push("a");
-        t.push("b");
+        t.push(cmd("a"));
+        t.push(cmd("b"));
         t.clear();
         assert!(t.is_empty());
     }
@@ -169,11 +295,11 @@ mod tests {
     #[test]
     fn clear_allows_subsequent_push() {
         let mut t = Transcript::new(10);
-        t.push("a");
+        t.push(cmd("a"));
         t.clear();
-        t.push("b");
-        let got: Vec<&str> = t.entries().collect();
-        assert_eq!(got, vec!["b"]);
+        t.push(cmd("b"));
+        let texts: Vec<&str> = t.entries().map(|e| e.kind.text()).collect();
+        assert_eq!(texts, vec!["b"]);
     }
 
     // --- trim ---
@@ -181,29 +307,28 @@ mod tests {
     #[test]
     fn trim_zero_is_noop() {
         let mut t = Transcript::new(10);
-        t.push("a");
-        t.push("b");
+        t.push(cmd("a"));
+        t.push(cmd("b"));
         t.trim(0);
-        let got: Vec<&str> = t.entries().collect();
-        assert_eq!(got, vec!["a", "b"]);
+        assert_eq!(t.len(), 2);
     }
 
     #[test]
     fn trim_drops_oldest_n() {
         let mut t = Transcript::new(10);
-        t.push("a");
-        t.push("b");
-        t.push("c");
+        t.push(cmd("a"));
+        t.push(cmd("b"));
+        t.push(cmd("c"));
         t.trim(2);
-        let got: Vec<&str> = t.entries().collect();
-        assert_eq!(got, vec!["c"]);
+        let texts: Vec<&str> = t.entries().map(|e| e.kind.text()).collect();
+        assert_eq!(texts, vec!["c"]);
     }
 
     #[test]
     fn trim_exact_len_clears_all() {
         let mut t = Transcript::new(10);
-        t.push("a");
-        t.push("b");
+        t.push(cmd("a"));
+        t.push(cmd("b"));
         t.trim(2);
         assert!(t.is_empty());
     }
@@ -211,9 +336,25 @@ mod tests {
     #[test]
     fn trim_exceeding_len_clears_all_without_error() {
         let mut t = Transcript::new(10);
-        t.push("a");
-        t.push("b");
+        t.push(cmd("a"));
+        t.push(cmd("b"));
         t.trim(999);
         assert!(t.is_empty());
+    }
+
+    // --- display ---
+
+    #[test]
+    fn display_format_is_correct() {
+        let entry = TranscriptEntry::command("ls /tmp");
+        let d = entry.display();
+        assert!(d.starts_with('['), "should start with '[': {d}");
+        assert!(d.contains("] command: ls /tmp"), "unexpected format: {d}");
+    }
+
+    #[test]
+    fn display_output_tag() {
+        let entry = TranscriptEntry::output("hello");
+        assert!(entry.display().contains("] output: hello"));
     }
 }

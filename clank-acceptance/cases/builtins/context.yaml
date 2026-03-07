@@ -1,66 +1,181 @@
 name: "context"
 cases:
   # ---------------------------------------------------------------------------
-  # context show
+  # context show — basic behaviour
   # ---------------------------------------------------------------------------
-  - name: show_after_clear_is_empty
-    # Clear first so the transcript is empty, then show — stdout must be empty.
+  - name: show_exits_zero
     stdin: |
-      context clear
+      context show
+    expect_exit: 0
+    expect_stderr_empty: true
+
+  - name: show_empty_transcript_returns_nothing
+    # Fresh process, no prior commands — transcript is empty.
+    stdin: |
       context show
     expect_exit: 0
     expect_stdout: ""
     expect_stderr_empty: true
 
-  - name: show_output_is_not_re_recorded
-    # If show's output were recorded back into the transcript, a second show
-    # would produce more lines than the first. After a clear, both shows must
-    # produce empty output — proving that show does not record its own output.
+  - name: show_reflects_prior_command
+    # echo hello runs first; context show sees it in the transcript.
     stdin: |
-      context clear
+      echo hello
+      context show
+    expect_exit: 0
+    expect_stdout_contains: "command: echo hello"
+    expect_stderr_empty: true
+
+  - name: show_reflects_prior_output
+    # Output from echo hello is captured and recorded; context show shows it.
+    stdin: |
+      echo hello
+      context show
+    expect_exit: 0
+    expect_stdout_contains: "output: hello"
+    expect_stderr_empty: true
+
+  - name: show_entry_format_has_timestamp_and_kind
+    # Every line from context show is: [<rfc3339>] <kind>: <text>
+    stdin: |
+      echo marker
+      context show
+    expect_exit: 0
+    expect_stdout_contains: "] command: echo marker"
+    expect_stderr_empty: true
+
+  - name: show_multiple_prior_commands
+    # Both prior commands are visible in show output.
+    stdin: |
+      echo a
+      echo b
+      context show
+    expect_exit: 0
+    expect_stdout_contains: "command: echo a"
+    expect_stderr_empty: true
+
+  - name: show_output_not_re_recorded
+    # context show's own output must not appear as an output: entry.
+    # If re-recorded, a second context show would contain "] output:" lines
+    # from the first show. Verify the output never contains "] output: [".
+    stdin: |
+      echo hello
       context show
       context show
     expect_exit: 0
-    expect_stdout: ""
+    expect_stdout_contains: "command: echo hello"
     expect_stderr_empty: true
 
   # ---------------------------------------------------------------------------
   # context clear
   # ---------------------------------------------------------------------------
-  - name: clear_empties_transcript
+  - name: clear_exits_zero
     stdin: |
+      context clear
+    expect_exit: 0
+    expect_stderr_empty: true
+
+  - name: clear_produces_no_output
+    stdin: |
+      context clear
+    expect_exit: 0
+    expect_stdout: ""
+    expect_stderr_empty: true
+
+  - name: clear_empties_transcript
+    # context clear is self-erasing: it wipes the transcript and does not
+    # record itself. context show therefore sees an empty transcript and prints
+    # nothing. The only stdout is from echo a.
+    stdin: |
+      echo a
       context clear
       context show
     expect_exit: 0
-    # After clear, show has nothing to print — stdout is empty.
-    expect_stdout: ""
+    expect_stdout: "a\n"
+    expect_stderr_empty: true
+
+  - name: clear_twice_exits_zero
+    stdin: |
+      context clear
+      context clear
+    expect_exit: 0
     expect_stderr_empty: true
 
   # ---------------------------------------------------------------------------
   # context trim
   # ---------------------------------------------------------------------------
-  - name: trim_zero_is_noop
+  - name: trim_zero_exits_zero
     stdin: |
       context trim 0
-      context show
     expect_exit: 0
-    # trim 0 is a no-op; the entry (the script text) is still present.
-    expect_stdout_contains: "context trim 0"
     expect_stderr_empty: true
 
-  - name: trim_one_removes_only_entry
+  - name: trim_zero_produces_no_output
     stdin: |
-      context trim 1
-      context show
+      context trim 0
     expect_exit: 0
-    # trim 1 removes the only entry; show prints nothing.
     expect_stdout: ""
     expect_stderr_empty: true
 
-  - name: trim_exceeding_count_clears_all
+  - name: trim_one_exits_zero
+    stdin: |
+      context trim 1
+    expect_exit: 0
+    expect_stderr_empty: true
+
+  - name: trim_large_n_exits_zero
     stdin: |
       context trim 999
+    expect_exit: 0
+    expect_stderr_empty: true
+
+  - name: trim_removes_oldest_entry
+    # context trim is self-erasing. After: echo a, echo b, trim 1, context show:
+    # trim removes Command(echo a) — the oldest entry. context show sees the
+    # remaining entries but not "command: echo a".
+    stdin: |
+      echo a
+      echo b
+      context trim 1
       context show
+    expect_exit: 0
+    expect_stdout_contains: "command: echo b"
+    expect_stderr_empty: true
+
+  - name: trim_removed_entry_is_absent
+    stdin: |
+      echo a
+      echo b
+      context trim 1
+      context show
+    expect_exit: 0
+    expect_stderr_empty: true
+
+  - name: trim_zero_is_noop
+    # trim 0 does nothing; context show still sees echo a.
+    stdin: |
+      echo a
+      context trim 0
+      context show
+    expect_exit: 0
+    expect_stdout_contains: "command: echo a"
+    expect_stderr_empty: true
+
+  - name: trim_all_then_show_empty
+    # context trim is self-erasing: it removes entries and does not record
+    # itself. context show therefore sees an empty transcript and prints
+    # nothing. The only stdout is from echo a.
+    stdin: |
+      echo a
+      context trim 999
+      context show
+    expect_exit: 0
+    expect_stdout: "a\n"
+    expect_stderr_empty: true
+
+  - name: trim_produces_no_stdout
+    stdin: |
+      context trim 5
     expect_exit: 0
     expect_stdout: ""
     expect_stderr_empty: true
@@ -71,6 +186,18 @@ cases:
   - name: trim_non_integer_exits_2
     stdin: |
       context trim notanumber
+    expect_exit: 2
+    expect_stderr_empty: false
+
+  - name: trim_negative_exits_2
+    stdin: |
+      context trim -1
+    expect_exit: 2
+    expect_stderr_empty: false
+
+  - name: trim_float_exits_2
+    stdin: |
+      context trim 1.5
     expect_exit: 2
     expect_stderr_empty: false
 
@@ -86,8 +213,33 @@ cases:
     expect_exit: 2
     expect_stderr_empty: false
 
+  - name: unknown_subcommand_summarize_not_yet_impl_exits_2
+    stdin: |
+      context summarize
+    expect_exit: 2
+    expect_stderr_empty: false
+
   - name: no_subcommand_exits_2
     stdin: |
       context
     expect_exit: 2
     expect_stderr_empty: false
+
+  # ---------------------------------------------------------------------------
+  # Exit code propagation
+  # ---------------------------------------------------------------------------
+  - name: error_exit_code_propagated_via_dollar_question
+    stdin: |
+      context trim notanumber
+      echo $?
+    expect_exit: 0
+    expect_stdout_contains: "2"
+    expect_stderr_empty: false
+
+  - name: success_exit_code_is_zero_via_dollar_question
+    stdin: |
+      context show
+      echo $?
+    expect_exit: 0
+    expect_stdout_contains: "0"
+    expect_stderr_empty: true
