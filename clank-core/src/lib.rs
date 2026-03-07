@@ -6,6 +6,7 @@
 
 use brush_builtins::{default_builtins, BuiltinSet};
 pub use brush_core::{CreateOptions, Error, Shell};
+use brush_core::ProcessGroupPolicy;
 
 // ---------------------------------------------------------------------------
 // Default options
@@ -16,13 +17,15 @@ pub use brush_core::{CreateOptions, Error, Shell};
 /// These options are used by [`run`] and serve as the canonical baseline for
 /// integration tests that need to vary individual fields.
 pub fn default_options() -> CreateOptions {
+    let mut builtins = default_builtins(BuiltinSet::BashMode);
+    builtins.insert("context".to_owned(), clank_builtins::context_registration());
     CreateOptions {
         interactive: false,
         no_profile: true,
         no_rc: true,
         no_editing: true,
         shell_name: Some("clank".to_owned()),
-        builtins: default_builtins(BuiltinSet::BashMode),
+        builtins,
         ..CreateOptions::default()
     }
 }
@@ -48,6 +51,10 @@ pub fn interactive_options() -> CreateOptions {
 pub async fn run_with_options(command: &str, options: CreateOptions) -> Result<u8, Error> {
     let mut shell = Shell::new(options).await?;
     let params = shell.default_exec_params();
+    clank_transcript::global()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .push(command);
     let result = shell.run_string(command, &params).await?;
     Ok(result.exit_code.into())
 }
@@ -78,7 +85,15 @@ pub async fn run_interactive(
     mut input: impl std::io::BufRead,
     mut output: impl std::io::Write,
 ) -> Result<u8, Error> {
-    let params = shell.default_exec_params();
+    // Use SameProcessGroup so that external commands (e.g. `ls`) are spawned
+    // in the shell's own process group rather than a new one. With
+    // NewProcessGroup (the brush default) and interactive: true, brush calls
+    // tcsetpgrp to hand terminal foreground to the child — but clank's REPL
+    // loop does not perform terminal process-group management, so that call
+    // races/hangs. SameProcessGroup is correct for an embedded REPL that does
+    // not implement full job control.
+    let mut params = shell.default_exec_params();
+    params.process_group_policy = ProcessGroupPolicy::SameProcessGroup;
     let mut last_exit_code: u8 = 0;
     let mut line = String::new();
 
@@ -102,6 +117,10 @@ pub async fn run_interactive(
             continue;
         }
 
+        clank_transcript::global()
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .push(cmd);
         let result = shell.run_string(cmd, &params).await?;
         last_exit_code = result.exit_code.into();
 

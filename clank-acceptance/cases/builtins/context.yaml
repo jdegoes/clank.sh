@@ -1,0 +1,97 @@
+name: "context"
+cases:
+  # ---------------------------------------------------------------------------
+  # context show
+  # ---------------------------------------------------------------------------
+  # In script mode the entire stdin blob is passed to run_with_options as a
+  # single string, producing exactly one transcript entry containing the full
+  # script text. context show therefore prints that one entry.
+  - name: show_contains_recorded_command
+    stdin: |
+      context show
+    expect_exit: 0
+    expect_stdout_contains: "context show"
+    expect_stderr_empty: true
+
+  - name: show_output_is_not_re_recorded
+    # Run context show twice. If show's own output were re-recorded the second
+    # show would contain the first show's output as an extra entry — the
+    # transcript would grow. Since recording happens before run_string and
+    # show writes to stdout only (not the transcript), the transcript stays
+    # as a single entry equal to the original script text.
+    stdin: |
+      context show
+      context show
+    expect_exit: 0
+    # Both invocations print the same single entry (the full script).
+    # The second show must not contain extra transcript entries beyond that.
+    expect_stdout_contains: "context show"
+    expect_stderr_empty: true
+
+  # ---------------------------------------------------------------------------
+  # context clear
+  # ---------------------------------------------------------------------------
+  - name: clear_empties_transcript
+    stdin: |
+      context clear
+      context show
+    expect_exit: 0
+    # After clear, show has nothing to print — stdout is empty.
+    expect_stdout: ""
+    expect_stderr_empty: true
+
+  # ---------------------------------------------------------------------------
+  # context trim
+  # ---------------------------------------------------------------------------
+  - name: trim_zero_is_noop
+    stdin: |
+      context trim 0
+      context show
+    expect_exit: 0
+    # trim 0 is a no-op; the entry (the script text) is still present.
+    expect_stdout_contains: "context trim 0"
+    expect_stderr_empty: true
+
+  - name: trim_one_removes_only_entry
+    stdin: |
+      context trim 1
+      context show
+    expect_exit: 0
+    # trim 1 removes the only entry; show prints nothing.
+    expect_stdout: ""
+    expect_stderr_empty: true
+
+  - name: trim_exceeding_count_clears_all
+    stdin: |
+      context trim 999
+      context show
+    expect_exit: 0
+    expect_stdout: ""
+    expect_stderr_empty: true
+
+  # ---------------------------------------------------------------------------
+  # Error cases
+  # ---------------------------------------------------------------------------
+  - name: trim_non_integer_exits_2
+    stdin: |
+      context trim notanumber
+    expect_exit: 2
+    expect_stderr_empty: false
+
+  - name: trim_missing_argument_exits_2
+    stdin: |
+      context trim
+    expect_exit: 2
+    expect_stderr_empty: false
+
+  - name: unknown_subcommand_exits_2
+    stdin: |
+      context unknowncmd
+    expect_exit: 2
+    expect_stderr_empty: false
+
+  - name: no_subcommand_exits_2
+    stdin: |
+      context
+    expect_exit: 2
+    expect_stderr_empty: false
