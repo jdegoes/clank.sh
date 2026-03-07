@@ -1,0 +1,6 @@
+description: variable set in setup is visible in script
+setup: ../setup/assign-name.yaml
+script: |
+  echo $name
+stdout: |
+  world
