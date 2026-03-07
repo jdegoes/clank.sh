@@ -2,6 +2,8 @@
 title: "Core commands batch 1 — filesystem and basic utilities"
 date: 2026-03-07
 author: agent
+closed: 2026-03-07
+plan: dev-docs/plans/done/core-commands-batch-1.md
 ---
 
 # Core commands batch 1 — filesystem and basic utilities
