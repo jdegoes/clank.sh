@@ -1,11 +1,14 @@
+mod ask;
 mod tee;
 mod transcript;
 
 use std::io::{self, BufRead, Write};
+use std::sync::Arc;
 
 use brush_builtins::{BuiltinSet, ShellBuilderExt};
 use brush_core::openfiles::OpenFile;
 use brush_core::Shell;
+use clank_http::HttpClient;
 
 pub use transcript::{CommandOutcome, Transcript, TranscriptEntry};
 
@@ -127,6 +130,27 @@ impl ClankShell {
     pub fn default_exec_params(&self) -> brush_core::ExecutionParameters {
         self.shell.default_exec_params()
     }
+
+    /// Invoke the AI model with the current transcript as context.
+    ///
+    /// Parses the raw REPL input line for flags and prompt, sends the request
+    /// via the provided HTTP client, appends the response to the transcript,
+    /// and returns the response text.
+    pub async fn run_ask(
+        &mut self,
+        input: &str,
+        http: &Arc<dyn HttpClient>,
+    ) -> Result<String, ask::AskError> {
+        let invocation = ask::AskInvocation::parse(input)?;
+        let transcript_context = if invocation.fresh {
+            String::new()
+        } else {
+            self.transcript.format_for_model()
+        };
+        let response = ask::execute(&invocation, &transcript_context, http).await?;
+        self.transcript.push_ai_response(&response);
+        Ok(response)
+    }
 }
 
 // ── Public shell construction ─────────────────────────────────────────────────
@@ -143,11 +167,11 @@ pub async fn build_shell() -> ClankShell {
 
 /// Run an interactive read-eval-print loop over stdin until EOF or `exit`.
 ///
-/// Handles `context` and `model` commands directly (shell-internal scope).
+/// Handles `context`, `model`, and `ask` commands directly (shell-internal scope).
 /// All other commands are dispatched through `ClankShell`.
 ///
 /// The prompt is written to stderr so it does not pollute stdout.
-pub async fn run_repl(mut shell: ClankShell) {
+pub async fn run_repl(mut shell: ClankShell, http: Arc<dyn HttpClient>) {
     let stdin = io::stdin();
     let mut lines = stdin.lock().lines();
 
@@ -194,6 +218,15 @@ pub async fn run_repl(mut shell: ClankShell) {
                     s if s.starts_with("model add ") => model_add(s),
 
                     s if s.starts_with("model default ") => model_set_default(s),
+
+                    s if s == "ask" || s.starts_with("ask ") => {
+                        match shell.run_ask(s, &http).await {
+                            Ok(response) => {
+                                println!("{response}");
+                            }
+                            Err(e) => eprintln!("clank: ask: {e}"),
+                        }
+                    }
 
                     _ => {
                         shell.run_command(trimmed).await;
@@ -373,4 +406,5 @@ mod tests {
         assert!(shell.transcript.len() < len_before);
         assert!(shell.context_show().contains("second"));
     }
+
 }

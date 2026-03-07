@@ -406,13 +406,18 @@ name = "clank"
 version = "0.1.0"
 dependencies = [
  "assert_cmd",
+ "async-trait",
  "brush-builtins",
  "brush-core",
  "clank-builtins",
  "clank-config",
  "clank-golden",
+ "clank-http",
+ "mockito",
  "predicates",
+ "serde_json",
  "tempfile",
+ "thiserror",
  "tokio",
 ]
 
