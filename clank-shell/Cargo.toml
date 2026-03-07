@@ -9,7 +9,5 @@ name = "clank"
 path = "src/main.rs"
 
 [dependencies]
-brush-core     = "0.4"
-brush-parser   = "0.3"
-brush-builtins = "0.1"
-tokio          = { version = "1", features = ["full"] }
+clank-core = { path = "../clank-core" }
+tokio      = { version = "1", features = ["full"] }

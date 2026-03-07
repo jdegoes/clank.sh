@@ -1,0 +1,14 @@
+[package]
+name    = "clank-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+brush-core     = "0.4"
+brush-parser   = "0.3"
+brush-builtins = "0.1"
+tokio          = { version = "1", features = ["full"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt", "macros"] }

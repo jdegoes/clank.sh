@@ -1,0 +1,17 @@
+name: "Builtins — alias"
+cases:
+  - name: alias_define_and_invoke
+    stdin: |
+      alias greet='echo alias-works'
+      greet
+    expect_exit: 0
+    expect_stdout: "alias-works\n"
+    expect_stderr_empty: true
+
+  - name: alias_with_argument
+    stdin: |
+      alias say='echo'
+      say hello
+    expect_exit: 0
+    expect_stdout: "hello\n"
+    expect_stderr_empty: true
