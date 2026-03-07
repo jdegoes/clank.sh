@@ -1,47 +1,82 @@
-use assert_cmd::Command;
+//! Integration tests for REPL loop behaviour.
+//! These tests verify how clank handles input at the loop level:
+//! prompt placement, empty lines, EOF, exit, and basic execution.
+
+mod common;
+
+use common::{clank, run_script};
 use predicates::prelude::PredicateBooleanExt;
 use predicates::str::contains;
 
-fn clank() -> Command {
-    Command::new(assert_cmd::cargo::cargo_bin!("clank"))
+// --- Basic execution ---
+
+/// The most fundamental test: a single echo command produces output on stdout.
+#[test]
+fn echo_hello_prints_to_stdout() {
+    run_script("echo hello").success().stdout(contains("hello"));
 }
 
-// Acceptance test 3: echo hello prints hello
+/// Multiple commands on separate lines are all executed in sequence.
 #[test]
-fn echo_hello() {
-    clank()
-        .write_stdin("echo hello\n")
-        .assert()
+fn multiple_commands_execute_in_sequence() {
+    run_script("echo first\necho second")
         .success()
-        .stdout(contains("hello"));
+        .stdout(contains("first"))
+        .stdout(contains("second"));
 }
 
-// Acceptance test 4: ls produces output (non-empty stdout)
+/// Empty lines are silently skipped without error.
 #[test]
-fn ls_produces_output() {
-    clank()
-        .write_stdin("ls\n")
-        .assert()
+fn empty_lines_are_ignored() {
+    run_script("\n\n\necho after_blanks\n\n")
         .success()
-        .stdout(predicates::str::is_empty().not());
+        .stdout(contains("after_blanks"));
 }
 
-// Acceptance test 7: exit code 0 after successful command
+/// Lines containing only whitespace are silently skipped.
 #[test]
-fn exit_code_zero_after_success() {
-    clank()
-        .write_stdin("true\necho $?\n")
-        .assert()
+fn whitespace_only_lines_are_ignored() {
+    run_script("   \n\t\necho ok")
         .success()
-        .stdout(contains("0"));
+        .stdout(contains("ok"));
 }
 
-// Acceptance test 8: exit code 1 after failing command
+// --- Prompt placement ---
+
+/// The prompt ("$ ") is written to stderr, not stdout.
+/// This ensures stdout is clean for programmatic use and test assertions.
 #[test]
-fn exit_code_one_after_failure() {
+fn prompt_is_on_stderr_not_stdout() {
     clank()
-        .write_stdin("false\necho $?\n")
+        .write_stdin("echo hi\n")
         .assert()
         .success()
-        .stdout(contains("1"));
+        .stdout(predicates::str::contains("$ ").not()) // prompt must NOT appear on stdout
+        .stderr(contains("$ ")); // prompt MUST appear on stderr
+}
+
+// --- Exit and EOF ---
+
+/// The `exit` command terminates the shell cleanly with exit code 0.
+#[test]
+fn exit_command_terminates_with_code_zero() {
+    clank().write_stdin("exit\n").assert().success().code(0);
+}
+
+/// EOF (Ctrl-D, i.e. closing stdin) terminates the shell cleanly.
+#[test]
+fn eof_terminates_cleanly() {
+    clank()
+        .write_stdin("") // empty stdin = immediate EOF
+        .assert()
+        .success()
+        .code(0);
+}
+
+/// Commands after `exit` are not executed.
+#[test]
+fn commands_after_exit_are_not_run() {
+    run_script("exit\necho should_not_appear")
+        .success()
+        .stdout(predicates::str::contains("should_not_appear").not());
 }
