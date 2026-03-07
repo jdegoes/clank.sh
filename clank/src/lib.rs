@@ -166,11 +166,22 @@ pub async fn build_shell() -> ClankShell {
 // ── ANSI color helpers ────────────────────────────────────────────────────────
 
 mod color {
-    pub const BOLD_GREEN: &str = "\x1b[1;32m";
-    pub const RED: &str = "\x1b[31m";
-    pub const CYAN: &str = "\x1b[36m";
-    pub const RESET: &str = "\x1b[0m";
+    /// Prompt: bold green.
+    pub const PROMPT: &str = "\x1b[1;32m";
+    /// Command keywords (ask, model, context): bold yellow.
+    pub const KEYWORD: &str = "\x1b[1;33m";
+    /// AI response text: cyan.
+    pub const AI: &str = "\x1b[36m";
+    /// Success confirmations: green.
+    pub const SUCCESS: &str = "\x1b[32m";
+    /// Error messages: bold red.
+    pub const ERROR: &str = "\x1b[1;31m";
+    /// Labels and headings: bold white.
+    pub const LABEL: &str = "\x1b[1;37m";
+    /// Secondary/meta info: dim.
     pub const DIM: &str = "\x1b[2m";
+    /// Reset all attributes.
+    pub const RESET: &str = "\x1b[0m";
 }
 
 // ── REPL ──────────────────────────────────────────────────────────────────────
@@ -186,13 +197,13 @@ pub async fn run_repl(mut shell: ClankShell, http: Arc<dyn HttpClient>) {
     let mut lines = stdin.lock().lines();
 
     loop {
-        eprint!("{}clank${} ", color::BOLD_GREEN, color::RESET);
+        eprint!("{}clank${} ", color::PROMPT, color::RESET);
         let _ = io::stderr().flush();
 
         match lines.next() {
             None => break, // EOF / Ctrl-D
             Some(Err(e)) => {
-                eprintln!("{}clank: read error: {e}{}", color::RED, color::RESET);
+                eprintln!("{}clank: read error: {e}{}", color::ERROR, color::RESET);
                 break;
             }
             Some(Ok(line)) => {
@@ -213,14 +224,22 @@ pub async fn run_repl(mut shell: ClankShell, http: Arc<dyn HttpClient>) {
 
                     "context clear" => {
                         shell.context_clear();
-                        eprintln!("{}context cleared{}", color::DIM, color::RESET);
+                        eprintln!(
+                            "{}context{} {}cleared{}",
+                            color::KEYWORD, color::RESET,
+                            color::DIM, color::RESET,
+                        );
                     }
 
                     s if s.starts_with("context trim ") => {
                         let rest = s.trim_start_matches("context trim ").trim();
                         match rest.parse::<usize>() {
                             Ok(n) => shell.context_trim(n),
-                            Err(_) => eprintln!("{}clank: context trim: invalid argument: {rest}{}", color::RED, color::RESET),
+                            Err(_) => eprintln!(
+                                "{}clank:{} {}context trim:{} invalid argument: {rest}",
+                                color::ERROR, color::RESET,
+                                color::KEYWORD, color::RESET,
+                            ),
                         }
                     }
 
@@ -232,17 +251,28 @@ pub async fn run_repl(mut shell: ClankShell, http: Arc<dyn HttpClient>) {
 
                     s if s == "model" || s.starts_with("model ") => {
                         eprintln!(
-                            "{}clank: usage:\n  model add <provider> --key <key>\n  model default <model>\n  model list{}",
-                            color::RED, color::RESET,
+                            "{}clank:{} usage:\n  {}model add{} <provider> --key <key>\n  {}model default{} <model>\n  {}model list{}",
+                            color::ERROR, color::RESET,
+                            color::KEYWORD, color::RESET,
+                            color::KEYWORD, color::RESET,
+                            color::KEYWORD, color::RESET,
                         );
                     }
 
                     s if s == "ask" || s.starts_with("ask ") => {
                         match shell.run_ask(s, &http).await {
                             Ok(response) => {
-                                println!("{}{response}{}", color::CYAN, color::RESET);
+                                println!(
+                                    "{}ai ▸{} {}{response}{}",
+                                    color::KEYWORD, color::RESET,
+                                    color::AI, color::RESET,
+                                );
                             }
-                            Err(e) => eprintln!("{}clank: ask: {e}{}", color::RED, color::RESET),
+                            Err(e) => eprintln!(
+                                "{}clank:{} {}ask:{} {e}",
+                                color::ERROR, color::RESET,
+                                color::KEYWORD, color::RESET,
+                            ),
                         }
                     }
 
@@ -260,24 +290,38 @@ pub async fn run_repl(mut shell: ClankShell, http: Arc<dyn HttpClient>) {
 /// `model list` — print configured providers and current default.
 fn model_list() {
     match clank_config::load_config() {
-        Err(e) => eprintln!("clank: model list: {e}"),
+        Err(e) => eprintln!(
+            "{}clank:{} {}model list:{} {e}",
+            color::ERROR, color::RESET, color::KEYWORD, color::RESET,
+        ),
         Ok(config) => {
             if config.providers.is_empty() {
-                println!("No providers configured.");
+                println!("{}No providers configured.{}", color::DIM, color::RESET);
             } else {
-                println!("Providers:");
+                println!("{}Providers:{}", color::LABEL, color::RESET);
                 let mut names: Vec<&str> =
                     config.providers.keys().map(|s| s.as_str()).collect();
                 names.sort();
                 for name in names {
                     let key = &config.providers[name].api_key;
                     let redacted = redact_key(key);
-                    println!("  {name}  (api_key: {redacted})");
+                    println!(
+                        "  {}{}{}  {}(api_key: {redacted}){}",
+                        color::KEYWORD, name, color::RESET,
+                        color::DIM, color::RESET,
+                    );
                 }
             }
             match &config.default_model {
-                Some(m) => println!("\nDefault model: {m}"),
-                None => println!("\nDefault model: (not set)"),
+                Some(m) => println!(
+                    "\n{}Default model:{} {}{}{}",
+                    color::LABEL, color::RESET,
+                    color::KEYWORD, m, color::RESET,
+                ),
+                None => println!(
+                    "\n{}Default model:{} {}(not set){}",
+                    color::LABEL, color::RESET, color::DIM, color::RESET,
+                ),
             }
         }
     }
@@ -291,17 +335,30 @@ fn model_add(input: &str) {
         let provider = parts[0].to_string();
         let key = parts[2].to_string();
         match clank_config::load_config() {
-            Err(e) => eprintln!("clank: model add: {e}"),
+            Err(e) => eprintln!(
+                "{}clank:{} {}model add:{} {e}",
+                color::ERROR, color::RESET, color::KEYWORD, color::RESET,
+            ),
             Ok(mut config) => {
                 config.add_provider(provider.clone(), key);
                 match clank_config::save_config(&config) {
-                    Ok(()) => println!("Provider '{provider}' added."),
-                    Err(e) => eprintln!("clank: model add: {e}"),
+                    Ok(()) => println!(
+                        "{}✓{} Provider '{}{}{}' added.",
+                        color::SUCCESS, color::RESET,
+                        color::KEYWORD, provider, color::RESET,
+                    ),
+                    Err(e) => eprintln!(
+                        "{}clank:{} {}model add:{} {e}",
+                        color::ERROR, color::RESET, color::KEYWORD, color::RESET,
+                    ),
                 }
             }
         }
     } else {
-        eprintln!("clank: usage: model add <provider> --key <key>");
+        eprintln!(
+            "{}clank:{} usage: {}model add{} <provider> --key <key>",
+            color::ERROR, color::RESET, color::KEYWORD, color::RESET,
+        );
     }
 }
 
@@ -309,16 +366,29 @@ fn model_add(input: &str) {
 fn model_set_default(input: &str) {
     let model = input.trim_start_matches("model default ").trim().to_string();
     if model.is_empty() {
-        eprintln!("clank: usage: model default <model>");
+        eprintln!(
+            "{}clank:{} usage: {}model default{} <model>",
+            color::ERROR, color::RESET, color::KEYWORD, color::RESET,
+        );
         return;
     }
     match clank_config::load_config() {
-        Err(e) => eprintln!("clank: model default: {e}"),
+        Err(e) => eprintln!(
+            "{}clank:{} {}model default:{} {e}",
+            color::ERROR, color::RESET, color::KEYWORD, color::RESET,
+        ),
         Ok(mut config) => {
             config.set_default_model(model.clone());
             match clank_config::save_config(&config) {
-                Ok(()) => println!("Default model set to '{model}'."),
-                Err(e) => eprintln!("clank: model default: {e}"),
+                Ok(()) => println!(
+                    "{}✓{} Default model set to '{}{}{}'. ",
+                    color::SUCCESS, color::RESET,
+                    color::KEYWORD, model, color::RESET,
+                ),
+                Err(e) => eprintln!(
+                    "{}clank:{} {}model default:{} {e}",
+                    color::ERROR, color::RESET, color::KEYWORD, color::RESET,
+                ),
             }
         }
     }
