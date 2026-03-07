@@ -22,7 +22,8 @@ both targets.
   no `wac` composition. Same workspace, same `cargo build` command.
 - `golem-ai` LLM composition approach ruled out — requires different project
   structure.
-- Sync `post_json` trait — works on both targets without WASM async runtime.
+- Async `post_json` trait with `async_trait` — composes naturally with tokio.
+- Call sites hold `Arc<dyn HttpClient>` — no `#[cfg]` needed downstream.
 - Named types throughout: `HttpHeader`, `HttpResponse`, `HttpError`.
 
 ## Crate Structure
@@ -33,8 +34,7 @@ clank.sh/
 └── clank-http/
     ├── Cargo.toml          ← target-specific deps: reqwest / golem-wasi-http
     └── src/
-        ├── lib.rs          ← HttpClient trait, HttpHeader, HttpResponse, HttpError,
-        │                       DefaultHttpClient type alias
+        ├── lib.rs          ← HttpClient trait, HttpHeader, HttpResponse, HttpError
         ├── native.rs       ← ReqwestClient (#[cfg(not(target_arch = "wasm32"))])
         └── wasm.rs         ← WasiHttpClient (#[cfg(target_arch = "wasm32")])
 ```
