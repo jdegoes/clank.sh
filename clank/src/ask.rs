@@ -10,11 +10,31 @@ use thiserror::Error;
 
 const ANTHROPIC_URL: &str = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION: &str = "2023-06-01";
+const OPENAI_COMPAT_URL_OPENROUTER: &str = "https://openrouter.ai/api/v1/chat/completions";
+const OPENAI_COMPAT_URL_OPENAI: &str = "https://api.openai.com/v1/chat/completions";
 const MAX_TOKENS: u32 = 4096;
 
 const SYSTEM_PROMPT: &str =
     "You are an AI agent operating a bash-compatible shell called clank.sh. \
      The transcript shows the session history. Respond helpfully and concisely.";
+
+/// Detected provider family — determines the API format used.
+#[derive(Debug, PartialEq)]
+enum ProviderFamily {
+    Anthropic,
+    OpenAiCompat { url: &'static str },
+}
+
+impl ProviderFamily {
+    /// Detect from the provider name prefix.
+    fn from_provider(provider: &str) -> Self {
+        match provider.to_lowercase().as_str() {
+            "anthropic" => ProviderFamily::Anthropic,
+            "openrouter" => ProviderFamily::OpenAiCompat { url: OPENAI_COMPAT_URL_OPENROUTER },
+            _ => ProviderFamily::OpenAiCompat { url: OPENAI_COMPAT_URL_OPENAI },
+        }
+    }
+}
 
 // ── Error type ────────────────────────────────────────────────────────────────
 
@@ -117,7 +137,7 @@ pub fn build_user_content(transcript_context: &str, prompt: &str) -> String {
 }
 
 /// Build the Anthropic Messages API request body.
-pub fn build_request_body(model: &str, user_content: &str) -> String {
+pub fn build_anthropic_request_body(model: &str, user_content: &str) -> String {
     json!({
         "model": model,
         "max_tokens": MAX_TOKENS,
@@ -128,6 +148,22 @@ pub fn build_request_body(model: &str, user_content: &str) -> String {
     })
     .to_string()
 }
+
+/// Build an OpenAI-compatible chat completions request body.
+/// Used for OpenRouter, OpenAI, and any compatible provider.
+pub fn build_openai_compat_request_body(model: &str, user_content: &str) -> String {
+    json!({
+        "model": model,
+        "max_tokens": MAX_TOKENS,
+        "messages": [
+            { "role": "system", "content": SYSTEM_PROMPT },
+            { "role": "user",   "content": user_content }
+        ]
+    })
+    .to_string()
+}
+
+
 
 /// Strip the provider prefix from a model name.
 /// `"anthropic/claude-sonnet-4-5"` → `"claude-sonnet-4-5"`.
@@ -165,12 +201,40 @@ pub fn extract_response_text(body: &str) -> Result<String, AskError> {
         })
 }
 
+/// Extract the text response from an OpenAI-compatible response body.
+pub fn extract_openai_compat_response_text(body: &str) -> Result<String, AskError> {
+    let value: Value = serde_json::from_str(body)
+        .map_err(|e| AskError::UnexpectedResponse(format!("invalid JSON: {e}")))?;
+
+    if let Some(error) = value.get("error") {
+        let msg = error
+            .get("message")
+            .and_then(|m| m.as_str())
+            .unwrap_or("unknown error");
+        return Err(AskError::UnexpectedResponse(format!("API error: {msg}")));
+    }
+
+    value
+        .get("choices")
+        .and_then(|c| c.as_array())
+        .and_then(|arr| arr.first())
+        .and_then(|choice| choice.get("message"))
+        .and_then(|msg| msg.get("content"))
+        .and_then(|t| t.as_str())
+        .map(|s| s.to_string())
+        .ok_or_else(|| {
+            AskError::UnexpectedResponse(format!(
+                "no content in response: {body}"
+            ))
+        })
+}
+
 // ── Main ask execution ────────────────────────────────────────────────────────
 
-/// Execute an `ask` invocation against the Anthropic API.
+/// Execute an `ask` invocation against the configured provider.
 ///
-/// Returns the model's response text on success. The caller is responsible
-/// for appending the response to the transcript.
+/// Detects the provider family from the model name prefix and uses the
+/// appropriate API format. Returns the model's response text on success.
 pub async fn execute(
     invocation: &AskInvocation,
     transcript_context: &str,
@@ -192,29 +256,50 @@ pub async fn execute(
         .as_deref()
         .unwrap_or(configured_model);
 
-    let model_for_api = strip_provider_prefix(model).to_string();
+    // Detect provider family from model prefix.
+    let provider = model.split('/').next().unwrap_or(model);
+    let family = ProviderFamily::from_provider(provider);
+
+    // For the API, use the model name as-is (OpenRouter needs the full
+    // provider/model string like "anthropic/claude-sonnet-4-5").
+    // For Anthropic direct, strip the prefix.
+    let model_for_api = match &family {
+        ProviderFamily::Anthropic => strip_provider_prefix(model).to_string(),
+        ProviderFamily::OpenAiCompat { .. } => model.to_string(),
+    };
 
     // Resolve API key.
     let api_key = config
         .api_key_for_model(model)
         .ok_or_else(|| {
-            let provider = model.split('/').next().unwrap_or(model).to_string();
-            AskError::NoApiKey(provider)
+            AskError::NoApiKey(provider.to_string())
         })?
         .to_string();
 
     // Build request.
     let context = if invocation.fresh { "" } else { transcript_context };
     let user_content = build_user_content(context, &invocation.prompt);
-    let body = build_request_body(&model_for_api, &user_content);
 
-    let headers = vec![
-        RequestHeader::new("x-api-key", &api_key),
-        RequestHeader::new("anthropic-version", ANTHROPIC_VERSION),
-    ];
+    let (url, headers, body) = match &family {
+        ProviderFamily::Anthropic => (
+            ANTHROPIC_URL,
+            vec![
+                RequestHeader::new("x-api-key", &api_key),
+                RequestHeader::new("anthropic-version", ANTHROPIC_VERSION),
+            ],
+            build_anthropic_request_body(&model_for_api, &user_content),
+        ),
+        ProviderFamily::OpenAiCompat { url } => (
+            *url,
+            vec![
+                RequestHeader::new("Authorization", format!("Bearer {api_key}")),
+            ],
+            build_openai_compat_request_body(&model_for_api, &user_content),
+        ),
+    };
 
     // Send request.
-    let response = http.post_json(ANTHROPIC_URL, &headers, &body).await?;
+    let response = http.post_json(url, &headers, &body).await?;
 
     if response.status != 200 {
         return Err(AskError::UnexpectedResponse(format!(
@@ -223,7 +308,11 @@ pub async fn execute(
         )));
     }
 
-    extract_response_text(&response.body)
+    // Parse response based on provider family.
+    match &family {
+        ProviderFamily::Anthropic => extract_response_text(&response.body),
+        ProviderFamily::OpenAiCompat { .. } => extract_openai_compat_response_text(&response.body),
+    }
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
@@ -339,7 +428,7 @@ mod tests {
 
     #[test]
     fn build_request_body_is_valid_json() {
-        let body = build_request_body("claude-sonnet-4-5", "hello");
+        let body = build_anthropic_request_body("claude-sonnet-4-5", "hello");
         let v: Value = serde_json::from_str(&body).expect("should be valid JSON");
         assert_eq!(v["model"], "claude-sonnet-4-5");
         assert_eq!(v["messages"][0]["role"], "user");
