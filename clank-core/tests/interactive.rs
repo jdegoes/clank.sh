@@ -125,12 +125,13 @@ async fn cd_persists_working_directory_across_lines() {
         .expect("run_interactive should not error");
     assert_eq!(code, 0);
 
-    let written = std::fs::read_to_string(&out_path)
-        .expect("pwd output file should have been written");
+    let written =
+        std::fs::read_to_string(&out_path).expect("pwd output file should have been written");
     let written = written.trim();
 
     // Resolve symlinks on both sides so macOS /private/tmp == /tmp comparisons pass.
-    let written_resolved = std::fs::canonicalize(written).unwrap_or_else(|_| PathBuf::from(written));
+    let written_resolved =
+        std::fs::canonicalize(written).unwrap_or_else(|_| PathBuf::from(written));
     let tmp_resolved = std::fs::canonicalize(&tmp).unwrap_or(tmp);
     assert_eq!(
         written_resolved, tmp_resolved,
@@ -184,7 +185,10 @@ async fn prompt_written_before_each_command() {
         .expect("run_interactive should not error");
     let s = String::from_utf8(prompt_output).expect("prompt output should be valid UTF-8");
     // Two commands + EOF read = three "$ " prompts.
-    assert_eq!(s, "$ $ $ ", "expected three prompts: two commands plus EOF probe");
+    assert_eq!(
+        s, "$ $ $ ",
+        "expected three prompts: two commands plus EOF probe"
+    );
 }
 
 /// A prompt is written even before the first command.
@@ -197,7 +201,10 @@ async fn prompt_written_before_first_command() {
         .await
         .expect("run_interactive should not error");
     let s = String::from_utf8(prompt_output).expect("prompt output should be valid UTF-8");
-    assert!(s.starts_with("$ "), "prompt should appear before first command");
+    assert!(
+        s.starts_with("$ "),
+        "prompt should appear before first command"
+    );
 }
 
 /// On EOF with no commands, at least one prompt is written (the shell asks
@@ -211,7 +218,10 @@ async fn prompt_written_on_immediate_eof() {
         .await
         .expect("run_interactive should not error");
     let s = String::from_utf8(prompt_output).expect("prompt output should be valid UTF-8");
-    assert_eq!(s, "$ ", "one prompt should be written before EOF is detected");
+    assert_eq!(
+        s, "$ ",
+        "one prompt should be written before EOF is detected"
+    );
 }
 
 // ---------------------------------------------------------------------------

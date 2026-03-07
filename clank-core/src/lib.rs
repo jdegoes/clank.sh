@@ -5,8 +5,8 @@
 //! embedders.
 
 use brush_builtins::{default_builtins, BuiltinSet};
-pub use brush_core::{CreateOptions, Error, Shell};
 use brush_core::ProcessGroupPolicy;
+pub use brush_core::{CreateOptions, Error, Shell};
 
 // ---------------------------------------------------------------------------
 // Default options

@@ -15,7 +15,7 @@
 
 use std::io::Cursor;
 
-use clank_core::{Shell, default_options, interactive_options, run, run_interactive};
+use clank_core::{default_options, interactive_options, run, run_interactive, Shell};
 use tokio::sync::Mutex;
 
 // ---------------------------------------------------------------------------
