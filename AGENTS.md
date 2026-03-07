@@ -42,7 +42,12 @@ crates only. Gate any Unix-specific code behind `#[cfg(unix)]`.
 
 ## Code Conventions
 
-_To be filled in._
+- **No anonymous tuple types in public or non-trivial internal APIs.** Do not
+  use `Vec<(String, String)>`, `(String, u64)`, etc. where the meaning of each
+  field is not immediately obvious. Use named structs or type aliases instead.
+- Every type must be readable without tracing through multiple layers of type
+  inference. If a reader has to ask "what does this String represent?", the
+  type is wrong.
 
 ## Development Workflow
 
