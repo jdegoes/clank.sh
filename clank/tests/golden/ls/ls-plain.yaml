@@ -1,0 +1,7 @@
+description: ls with no flags lists non-hidden entries alphabetically
+script: |
+  ls tests/golden/fixtures/ls-test-dir
+stdout: |
+  a-file.txt
+  b-file.txt
+  sub-dir

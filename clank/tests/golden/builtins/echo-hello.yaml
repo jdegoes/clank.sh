@@ -1,0 +1,5 @@
+description: echo prints its arguments to stdout
+script: |
+  echo hello
+stdout: |
+  hello

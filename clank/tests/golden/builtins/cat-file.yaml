@@ -1,0 +1,7 @@
+description: cat reads a file and outputs its contents
+script: |
+  echo "hello world" > /tmp/clank-test-cat.txt
+  cat /tmp/clank-test-cat.txt
+  rm /tmp/clank-test-cat.txt
+stdout: |
+  hello world

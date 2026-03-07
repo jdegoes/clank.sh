@@ -1,0 +1,8 @@
+description: touch creates a new empty file
+script: |
+  touch /tmp/clank-test-touch-new.txt
+  cat /tmp/clank-test-touch-new.txt
+  rm /tmp/clank-test-touch-new.txt
+  echo "done"
+stdout: |
+  done

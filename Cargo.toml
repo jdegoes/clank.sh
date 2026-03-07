@@ -1,0 +1,3 @@
+[workspace]
+members = ["clank", "clank-builtins", "clank-config", "clank-golden", "clank-http"]
+resolver = "2"

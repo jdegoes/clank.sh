@@ -1,0 +1,9 @@
+description: sort -r reverses the order
+script: |
+  printf "a\nb\nc\n" > /tmp/clank-test-sort-r.txt
+  sort -r /tmp/clank-test-sort-r.txt
+  rm /tmp/clank-test-sort-r.txt
+stdout: |
+  c
+  b
+  a

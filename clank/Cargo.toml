@@ -1,0 +1,30 @@
+[package]
+name = "clank"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "clank"
+path = "src/main.rs"
+
+[dependencies]
+brush-core = "0.4.0"
+brush-builtins = "0.1.0"
+clank-builtins = { path = "../clank-builtins" }
+clank-config = { path = "../clank-config" }
+clank-http = { path = "../clank-http" }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["full"] }
+
+[dev-dependencies]
+assert_cmd = "2"
+async-trait = "0.1"
+predicates = "3"
+tempfile = "3"
+mockito = "1"
+clank-golden = { path = "../clank-golden" }
+
+[[test]]
+name = "golden"
+path = "tests/golden_generated.rs"

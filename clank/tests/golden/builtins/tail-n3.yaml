@@ -1,0 +1,9 @@
+description: tail -n 3 outputs last 3 lines
+script: |
+  printf "a\nb\nc\nd\ne\n" > /tmp/clank-test-tail-n3.txt
+  tail -n 3 /tmp/clank-test-tail-n3.txt
+  rm /tmp/clank-test-tail-n3.txt
+stdout: |
+  c
+  d
+  e

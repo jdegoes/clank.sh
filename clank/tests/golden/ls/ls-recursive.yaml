@@ -1,0 +1,10 @@
+description: ls -R lists root contents directly then subdirectories with headers
+script: |
+  ls -R tests/golden/fixtures/ls-test-dir
+stdout: |
+  a-file.txt
+  b-file.txt
+  sub-dir
+
+  tests/golden/fixtures/ls-test-dir/sub-dir:
+  nested-file.txt

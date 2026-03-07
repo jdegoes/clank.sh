@@ -6,11 +6,48 @@ clank.sh is an AI-native shell targeting `wasm32-wasip2` and native Rust. See `R
 
 ## Build & Test
 
-_To be filled in._
+Run from the workspace root:
+
+- `cargo build`
+- `cargo test`
+- `cargo clippy --all-targets -- -D warnings`
+
+## Testing
+
+Every feature and bug fix must have tests at all applicable levels.
+
+| Layer | Location | Use for |
+|---|---|---|
+| Unit | `clank/src/**/#[cfg(test)]` | Internal logic, private functions. Use `#[tokio::test]` for async. |
+| Integration | `clank/tests/<concern>.rs` | Public shell behaviour via process spawn (`assert_cmd`). Shared helpers in `clank/tests/common/mod.rs`. |
+| System | `clank/tests/system.rs` | Multi-step scenarios with shared shell state. Name tests `scenario_*`. |
+
+New builtins or shell features → add to the relevant `clank/tests/<concern>.rs` or create one.
+New multi-step compositions → add a `scenario_*` test to `clank/tests/system.rs`.
+
+### Behavioural equivalence for internal command implementations
+
+Every command implemented internally in `clank-builtins` must produce output
+behaviorally equivalent to the corresponding OS command for the same inputs.
+Golden tests enforce this: expected output is derived from what the real OS command
+produces, and the internal implementation must match it. Any divergence in listing,
+formatting, ordering, or exit code is a test failure.
+
+### WASM compatibility
+
+All code in `clank-builtins` and all dependencies it introduces must compile to
+`wasm32-wasip2`. Do not introduce crates that depend on `nix`, `libc`, OS process
+spawning, or Unix-only system calls. Use `std::fs`, `std::io`, and WASM-compatible
+crates only. Gate any Unix-specific code behind `#[cfg(unix)]`.
 
 ## Code Conventions
 
-_To be filled in._
+- **No anonymous tuple types in public or non-trivial internal APIs.** Do not
+  use `Vec<(String, String)>`, `(String, u64)`, etc. where the meaning of each
+  field is not immediately obvious. Use named structs or type aliases instead.
+- Every type must be readable without tracing through multiple layers of type
+  inference. If a reader has to ask "what does this String represent?", the
+  type is wrong.
 
 ## Development Workflow
 

@@ -1,0 +1,8 @@
+description: cp copies a file
+script: |
+  echo "content" > /tmp/clank-test-cp-src.txt
+  cp /tmp/clank-test-cp-src.txt /tmp/clank-test-cp-dst.txt
+  cat /tmp/clank-test-cp-dst.txt
+  rm /tmp/clank-test-cp-src.txt /tmp/clank-test-cp-dst.txt
+stdout: |
+  content

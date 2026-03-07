@@ -1,0 +1,4 @@
+description: env outputs environment variables including ones we set
+script: |
+  export CLANK_TEST_VAR=hello123
+  env

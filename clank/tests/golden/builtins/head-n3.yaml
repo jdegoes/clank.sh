@@ -1,0 +1,9 @@
+description: head -n 3 outputs first 3 lines
+script: |
+  printf "a\nb\nc\nd\ne\n" > /tmp/clank-test-head-n3.txt
+  head -n 3 /tmp/clank-test-head-n3.txt
+  rm /tmp/clank-test-head-n3.txt
+stdout: |
+  a
+  b
+  c

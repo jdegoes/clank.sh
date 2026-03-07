@@ -1,0 +1,9 @@
+description: sort orders lines alphabetically
+script: |
+  printf "banana\napple\ncherry\n" > /tmp/clank-test-sort.txt
+  sort /tmp/clank-test-sort.txt
+  rm /tmp/clank-test-sort.txt
+stdout: |
+  apple
+  banana
+  cherry

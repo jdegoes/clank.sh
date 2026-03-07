@@ -1,0 +1,9 @@
+description: uniq filters adjacent duplicate lines
+script: |
+  printf "a\na\nb\nb\nb\nc\n" > /tmp/clank-test-uniq.txt
+  uniq /tmp/clank-test-uniq.txt
+  rm /tmp/clank-test-uniq.txt
+stdout: |
+  a
+  b
+  c

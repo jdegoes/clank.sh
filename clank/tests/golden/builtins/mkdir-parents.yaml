@@ -1,0 +1,7 @@
+description: mkdir -p creates nested directories
+script: |
+  mkdir -p /tmp/clank-test-mkdir-p/a/b/c
+  ls /tmp/clank-test-mkdir-p/a/b
+  rm -r /tmp/clank-test-mkdir-p
+stdout: |
+  c

@@ -1,0 +1,10 @@
+description: ls -a includes hidden entries (dotfiles)
+script: |
+  ls -a tests/golden/fixtures/ls-test-dir
+stdout: |
+  .
+  ..
+  .hidden-file
+  a-file.txt
+  b-file.txt
+  sub-dir

@@ -1,0 +1,6 @@
+description: cd followed by pwd reflects the new directory
+script: |
+  cd /tmp
+  pwd
+stdout: |
+  /tmp
