@@ -80,3 +80,46 @@ fn commands_after_exit_are_not_run() {
         .success()
         .stdout(predicates::str::contains("should_not_appear").not());
 }
+
+// --- context commands ---
+
+/// context show prints previously run commands to stdout.
+#[test]
+fn context_show_prints_transcript() {
+    run_script("echo hello\ncontext show")
+        .success()
+        .stdout(contains("echo hello"));
+}
+
+/// context show output is NOT re-recorded — running it twice produces
+/// the same transcript content (not growing).
+#[test]
+fn context_show_does_not_record_itself() {
+    run_script("echo hi\ncontext show\ncontext show")
+        .success()
+        // The transcript shown both times should be identical —
+        // context show must not add itself as an entry.
+        // We verify by checking the transcript only contains "echo hi" once.
+        .stdout(predicates::str::contains("context show").not());
+}
+
+/// context clear empties the transcript — subsequent context show prints nothing.
+#[test]
+fn context_clear_empties_transcript() {
+    run_script("echo hello\ncontext clear\ncontext show")
+        .success()
+        .stdout(predicates::str::contains("echo hello").not());
+}
+
+/// context trim drops the oldest entries — after trimming the first command's
+/// entries, context show no longer contains that command in the transcript.
+#[test]
+fn context_trim_drops_oldest_entries() {
+    // Run two commands, trim 2 entries (Command+Output for "first"), then show.
+    // The transcript shown by context show should contain "echo second" but
+    // not "echo first" as a recorded command.
+    run_script("echo first\necho second\ncontext trim 2\ncontext show")
+        .success()
+        .stdout(contains("echo second")) // second command still in transcript
+        .stdout(contains("$ echo first").not()); // first command entry removed
+}

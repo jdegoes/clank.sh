@@ -123,7 +123,8 @@ pub fn run(test: &GoldenTest, base_dir: &Path) {
         if let Some(expected_code) = test.exit_code {
             let actual_code = shell.last_result() as i32;
             assert_eq!(
-                actual_code, expected_code,
+                actual_code,
+                expected_code,
                 "exit code mismatch in '{}': expected {expected_code}, got {actual_code}",
                 test.description
             );
@@ -133,19 +134,19 @@ pub fn run(test: &GoldenTest, base_dir: &Path) {
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
-async fn run_script_no_capture(shell: &mut brush_core::Shell, script: &str) {
+async fn run_script_no_capture(shell: &mut clank::ClankShell, script: &str) {
     let params = shell.default_exec_params();
     for line in script.lines() {
         let trimmed = line.trim();
         if trimmed.is_empty() {
             continue;
         }
-        let _ = shell.run_string(trimmed, &params).await;
+        let _ = shell.run_string_raw(trimmed, &params).await;
     }
 }
 
 async fn run_script_captured(
-    shell: &mut brush_core::Shell,
+    shell: &mut clank::ClankShell,
     script: &str,
 ) -> (String, String) {
     use brush_core::openfiles::OpenFile;
@@ -165,7 +166,7 @@ async fn run_script_captured(
         if trimmed.is_empty() {
             continue;
         }
-        let _ = shell.run_string(trimmed, &params).await;
+        let _ = shell.run_string_raw(trimmed, &params).await;
     }
 
     // Drop params to close the write ends of the pipes before reading.

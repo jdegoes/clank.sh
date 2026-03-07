@@ -18,40 +18,30 @@ pub fn register(shell: &mut Shell) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[tokio::test]
     async fn register_succeeds() {
-        let mut shell = clank::build_shell().await;
-        // Should not panic — registration of all three commands completes cleanly.
-        register(&mut shell);
+        // build_shell() calls register() internally — if it doesn't panic, registration succeeded.
+        let _shell = clank::build_shell().await;
     }
 
     #[tokio::test]
     async fn echo_runs_internally() {
         let mut shell = clank::build_shell().await;
-        register(&mut shell);
-        let params = shell.default_exec_params();
-        let result = shell.run_string("echo hello", &params).await;
-        assert!(result.is_ok(), "echo should succeed");
-        assert_eq!(shell.last_result(), 0);
+        let outcome = shell.run_command("echo hello").await;
+        assert_eq!(outcome.exit_code, 0, "echo should succeed");
     }
 
     #[tokio::test]
     async fn true_exits_zero() {
         let mut shell = clank::build_shell().await;
-        register(&mut shell);
-        let params = shell.default_exec_params();
-        shell.run_string("true", &params).await.unwrap();
-        assert_eq!(shell.last_result(), 0);
+        let outcome = shell.run_command("true").await;
+        assert_eq!(outcome.exit_code, 0);
     }
 
     #[tokio::test]
     async fn false_exits_one() {
         let mut shell = clank::build_shell().await;
-        register(&mut shell);
-        let params = shell.default_exec_params();
-        let _ = shell.run_string("false", &params).await;
-        assert_eq!(shell.last_result(), 1);
+        let outcome = shell.run_command("false").await;
+        assert_eq!(outcome.exit_code, 1);
     }
 }
