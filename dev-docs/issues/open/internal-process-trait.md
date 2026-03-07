@@ -4,6 +4,16 @@ date: 2026-03-07
 author: agent
 ---
 
+## Summary
+
+The README states:
+
+> "What is replaced entirely is the Unix process spawning and runtime model,
+> substituted by the internal async process trait."
+
+Without this task, clank.sh is just a thin wrapper around Brush that happens to run
+real OS processes. It is not the product described in the README.
+
 ## Problem
 
 The current implementation delegates all command execution to `brush-core`, which
