@@ -10,6 +10,7 @@ path = "src/main.rs"
 [dependencies]
 brush-core = "0.4.0"
 brush-builtins = "0.1.0"
+clank-builtins = { path = "../clank-builtins" }
 tokio = { version = "1", features = ["full"] }
 
 [dev-dependencies]

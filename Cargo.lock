@@ -386,8 +386,21 @@ dependencies = [
  "assert_cmd",
  "brush-builtins",
  "brush-core",
+ "clank-builtins",
  "clank-golden",
  "predicates",
+ "tokio",
+]
+
+[[package]]
+name = "clank-builtins"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "brush-core",
+ "clank",
+ "clap",
+ "thiserror",
  "tokio",
 ]
 

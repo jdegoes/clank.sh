@@ -5,15 +5,19 @@ use brush_core::Shell;
 
 /// Build a new clank shell instance with BashMode builtins.
 /// Skips profile and rc sourcing — clank.sh manages its own init.
+/// Registers clank's internal command implementations, overriding any
+/// brush-builtins defaults for the same command names.
 pub async fn build_shell() -> Shell {
-    Shell::builder()
+    let mut shell = Shell::builder()
         .default_builtins(BuiltinSet::BashMode)
         .shell_name("clank".to_string())
         .no_profile(true)
         .no_rc(true)
         .build()
         .await
-        .expect("failed to create shell")
+        .expect("failed to create shell");
+    clank_builtins::register(&mut shell);
+    shell
 }
 
 /// Run a read-eval-print loop over stdin until EOF or `exit`.
