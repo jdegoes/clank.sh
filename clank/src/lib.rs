@@ -163,6 +163,16 @@ pub async fn build_shell() -> ClankShell {
     ClankShell::new().await
 }
 
+// ── ANSI color helpers ────────────────────────────────────────────────────────
+
+mod color {
+    pub const BOLD_GREEN: &str = "\x1b[1;32m";
+    pub const RED: &str = "\x1b[31m";
+    pub const CYAN: &str = "\x1b[36m";
+    pub const RESET: &str = "\x1b[0m";
+    pub const DIM: &str = "\x1b[2m";
+}
+
 // ── REPL ──────────────────────────────────────────────────────────────────────
 
 /// Run an interactive read-eval-print loop over stdin until EOF or `exit`.
@@ -176,13 +186,13 @@ pub async fn run_repl(mut shell: ClankShell, http: Arc<dyn HttpClient>) {
     let mut lines = stdin.lock().lines();
 
     loop {
-        eprint!("$ ");
+        eprint!("{}clank${} ", color::BOLD_GREEN, color::RESET);
         let _ = io::stderr().flush();
 
         match lines.next() {
             None => break, // EOF / Ctrl-D
             Some(Err(e)) => {
-                eprintln!("clank: read error: {e}");
+                eprintln!("{}clank: read error: {e}{}", color::RED, color::RESET);
                 break;
             }
             Some(Ok(line)) => {
@@ -203,13 +213,14 @@ pub async fn run_repl(mut shell: ClankShell, http: Arc<dyn HttpClient>) {
 
                     "context clear" => {
                         shell.context_clear();
+                        eprintln!("{}context cleared{}", color::DIM, color::RESET);
                     }
 
                     s if s.starts_with("context trim ") => {
                         let rest = s.trim_start_matches("context trim ").trim();
                         match rest.parse::<usize>() {
                             Ok(n) => shell.context_trim(n),
-                            Err(_) => eprintln!("clank: context trim: invalid argument: {rest}"),
+                            Err(_) => eprintln!("{}clank: context trim: invalid argument: {rest}{}", color::RED, color::RESET),
                         }
                     }
 
@@ -221,16 +232,17 @@ pub async fn run_repl(mut shell: ClankShell, http: Arc<dyn HttpClient>) {
 
                     s if s == "model" || s.starts_with("model ") => {
                         eprintln!(
-                            "clank: usage:\n  model add <provider> --key <key>\n  model default <model>\n  model list"
+                            "{}clank: usage:\n  model add <provider> --key <key>\n  model default <model>\n  model list{}",
+                            color::RED, color::RESET,
                         );
                     }
 
                     s if s == "ask" || s.starts_with("ask ") => {
                         match shell.run_ask(s, &http).await {
                             Ok(response) => {
-                                println!("{response}");
+                                println!("{}{response}{}", color::CYAN, color::RESET);
                             }
-                            Err(e) => eprintln!("clank: ask: {e}"),
+                            Err(e) => eprintln!("{}clank: ask: {e}{}", color::RED, color::RESET),
                         }
                     }
 

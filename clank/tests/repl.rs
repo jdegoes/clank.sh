@@ -51,8 +51,8 @@ fn prompt_is_on_stderr_not_stdout() {
         .write_stdin("echo hi\n")
         .assert()
         .success()
-        .stdout(predicates::str::contains("$ ").not()) // prompt must NOT appear on stdout
-        .stderr(contains("$ ")); // prompt MUST appear on stderr
+        .stdout(predicates::str::contains("clank$").not()) // prompt must NOT appear on stdout
+        .stderr(contains("clank$")); // prompt MUST appear on stderr
 }
 
 // --- Exit and EOF ---
