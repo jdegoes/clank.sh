@@ -427,6 +427,7 @@ version = "0.1.0"
 dependencies = [
  "brush-builtins",
  "brush-core",
+ "clank-transcript",
 ]
 
 [[package]]
@@ -437,6 +438,7 @@ dependencies = [
  "brush-core",
  "brush-parser",
  "clank-builtins",
+ "clank-transcript",
  "tokio",
 ]
 
@@ -455,6 +457,10 @@ dependencies = [
  "clank-core",
  "tokio",
 ]
+
+[[package]]
+name = "clank-transcript"
+version = "0.1.0"
 
 [[package]]
 name = "clap"

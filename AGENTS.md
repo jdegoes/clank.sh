@@ -75,6 +75,7 @@ cargo fmt --all
 - Do not add unnecessary comments. Code should be self-explanatory; comments should explain *why*, not *what*.
 - Use existing libraries and utilities from the codebase before reaching for something new.
 - Never expose or log secrets or keys.
+- Never use `unwrap()` in production code paths. Use `unwrap_or_else`, `expect` with a meaningful message, or propagate the error. `unwrap()` is acceptable in tests.
 
 ### Dependencies
 

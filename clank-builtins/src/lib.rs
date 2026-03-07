@@ -1,8 +1,13 @@
 //! clank-builtins — execution scope metadata and clank-owned builtin commands.
 //!
 //! This crate owns the `ExecutionScope` classification, the `CommandManifest`
-//! type, and the static manifest registry for all commands clank recognises.
-//! Future clank-owned builtin implementations live here alongside the metadata.
+//! type, the static manifest registry for all commands clank recognises, and
+//! the implementations of clank-owned shell-internal builtins.
+
+use std::io::Write as _;
+
+use brush_core::builtins::{simple_builtin, ContentType, Registration, SimpleCommand};
+use brush_core::{commands::ExecutionContext, results::ExecutionResult};
 
 /// The execution scope of a command, as defined in the clank architecture.
 ///
@@ -81,6 +86,10 @@ pub static MANIFEST_REGISTRY: &[CommandManifest] = &[
         scope: ExecutionScope::ShellInternal,
     },
     CommandManifest {
+        name: "context",
+        scope: ExecutionScope::ShellInternal,
+    },
+    CommandManifest {
         name: "fg",
         scope: ExecutionScope::ShellInternal,
     },
@@ -144,6 +153,109 @@ pub fn scope_of(name: &str) -> Option<ExecutionScope> {
         .map(|m| m.scope)
 }
 
+// ---------------------------------------------------------------------------
+// context builtin
+// ---------------------------------------------------------------------------
+
+/// Implementation of the `context` shell-internal builtin.
+///
+/// Subcommands: `show`, `clear`, `trim <n>`.
+pub struct ContextBuiltin;
+
+impl SimpleCommand for ContextBuiltin {
+    fn get_content(name: &str, content_type: ContentType) -> Result<String, brush_core::Error> {
+        let usage = format!("usage: {name} show|clear|trim <n>\n");
+        match content_type {
+            ContentType::ShortUsage | ContentType::DetailedHelp | ContentType::ManPage => Ok(usage),
+            ContentType::ShortDescription => Ok(format!("{name} - manage the shell transcript\n")),
+        }
+    }
+
+    fn execute<I: Iterator<Item = S>, S: AsRef<str>>(
+        context: ExecutionContext<'_>,
+        mut args: I,
+    ) -> Result<ExecutionResult, brush_core::Error> {
+        // The first element is the command name itself; skip it.
+        args.next();
+
+        let subcommand = match args.next() {
+            Some(s) => s,
+            None => {
+                writeln!(
+                    context.stderr(),
+                    "context: usage: context show|clear|trim <n>"
+                )
+                .ok();
+                return Ok(ExecutionResult::from(
+                    brush_core::results::ExecutionExitCode::InvalidUsage,
+                ));
+            }
+        };
+
+        match subcommand.as_ref() {
+            "show" => {
+                let transcript = clank_transcript::global();
+                let locked = transcript.lock().unwrap();
+                let mut stdout = context.stdout();
+                for entry in locked.entries() {
+                    writeln!(stdout, "{entry}").ok();
+                }
+                Ok(ExecutionResult::success())
+            }
+            "clear" => {
+                clank_transcript::global().lock().unwrap().clear();
+                Ok(ExecutionResult::success())
+            }
+            "trim" => {
+                let n_str = match args.next() {
+                    Some(s) => s,
+                    None => {
+                        writeln!(context.stderr(), "context: trim: missing argument <n>").ok();
+                        return Ok(ExecutionResult::from(
+                            brush_core::results::ExecutionExitCode::InvalidUsage,
+                        ));
+                    }
+                };
+                match n_str.as_ref().parse::<usize>() {
+                    Ok(n) => {
+                        clank_transcript::global().lock().unwrap().trim(n);
+                        Ok(ExecutionResult::success())
+                    }
+                    Err(_) => {
+                        writeln!(
+                            context.stderr(),
+                            "context: trim: invalid argument {:?}: expected non-negative integer",
+                            n_str.as_ref()
+                        )
+                        .ok();
+                        Ok(ExecutionResult::from(
+                            brush_core::results::ExecutionExitCode::InvalidUsage,
+                        ))
+                    }
+                }
+            }
+            other => {
+                writeln!(
+                    context.stderr(),
+                    "context: unknown subcommand {other:?}: expected show, clear, or trim"
+                )
+                .ok();
+                Ok(ExecutionResult::from(
+                    brush_core::results::ExecutionExitCode::InvalidUsage,
+                ))
+            }
+        }
+    }
+}
+
+/// Returns a brush-core `Registration` for the `context` builtin.
+///
+/// Called by `clank_core::default_options()` to register the builtin at
+/// shell construction time.
+pub fn context_registration() -> Registration {
+    simple_builtin::<ContextBuiltin>()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -165,6 +277,7 @@ mod tests {
         // shell-internal
         ("alias", ExecutionScope::ShellInternal),
         ("bg", ExecutionScope::ShellInternal),
+        ("context", ExecutionScope::ShellInternal),
         ("fg", ExecutionScope::ShellInternal),
         ("history", ExecutionScope::ShellInternal),
         ("jobs", ExecutionScope::ShellInternal),
