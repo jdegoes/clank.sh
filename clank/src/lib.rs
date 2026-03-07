@@ -190,6 +190,12 @@ pub async fn run_repl(mut shell: ClankShell) {
                         }
                     }
 
+                    "model list" => model_list(),
+
+                    s if s.starts_with("model add ") => model_add(s),
+
+                    s if s.starts_with("model default ") => model_set_default(s),
+
                     _ => {
                         shell.run_command(trimmed).await;
                     }
@@ -197,6 +203,86 @@ pub async fn run_repl(mut shell: ClankShell) {
             }
         }
     }
+}
+
+// ── model command handlers ────────────────────────────────────────────────────
+
+/// `model list` — print configured providers and current default.
+fn model_list() {
+    match clank_config::load_config() {
+        Err(e) => eprintln!("clank: model list: {e}"),
+        Ok(config) => {
+            if config.providers.is_empty() {
+                println!("No providers configured.");
+            } else {
+                println!("Providers:");
+                let mut names: Vec<&str> =
+                    config.providers.keys().map(|s| s.as_str()).collect();
+                names.sort();
+                for name in names {
+                    let key = &config.providers[name].api_key;
+                    let redacted = redact_key(key);
+                    println!("  {name}  (api_key: {redacted})");
+                }
+            }
+            match &config.default_model {
+                Some(m) => println!("\nDefault model: {m}"),
+                None => println!("\nDefault model: (not set)"),
+            }
+        }
+    }
+}
+
+/// `model add <provider> --key <key>` — register a provider and its API key.
+fn model_add(input: &str) {
+    // Parse: "model add <provider> --key <key>"
+    let rest = input.trim_start_matches("model add ").trim();
+    let parts: Vec<&str> = rest.splitn(3, ' ').collect();
+    if parts.len() == 3 && parts[1] == "--key" {
+        let provider = parts[0].to_string();
+        let key = parts[2].to_string();
+        match clank_config::load_config() {
+            Err(e) => eprintln!("clank: model add: {e}"),
+            Ok(mut config) => {
+                config.add_provider(provider.clone(), key);
+                match clank_config::save_config(&config) {
+                    Ok(()) => println!("Provider '{provider}' added."),
+                    Err(e) => eprintln!("clank: model add: {e}"),
+                }
+            }
+        }
+    } else {
+        eprintln!("clank: usage: model add <provider> --key <key>");
+    }
+}
+
+/// `model default <model>` — set the default model.
+fn model_set_default(input: &str) {
+    let model = input.trim_start_matches("model default ").trim().to_string();
+    if model.is_empty() {
+        eprintln!("clank: usage: model default <model>");
+        return;
+    }
+    match clank_config::load_config() {
+        Err(e) => eprintln!("clank: model default: {e}"),
+        Ok(mut config) => {
+            config.set_default_model(model.clone());
+            match clank_config::save_config(&config) {
+                Ok(()) => println!("Default model set to '{model}'."),
+                Err(e) => eprintln!("clank: model default: {e}"),
+            }
+        }
+    }
+}
+
+/// Partially redact an API key for display.
+/// Shows only the last 5 characters; replaces the rest with `*`.
+fn redact_key(key: &str) -> String {
+    if key.len() <= 5 {
+        return "*".repeat(key.len());
+    }
+    let visible = &key[key.len() - 5..];
+    format!("{}{}", "*".repeat(key.len() - 5), visible)
 }
 
 // ── Unit tests ────────────────────────────────────────────────────────────────

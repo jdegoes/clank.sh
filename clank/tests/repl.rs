@@ -123,3 +123,44 @@ fn context_trim_drops_oldest_entries() {
         .stdout(contains("echo second")) // second command still in transcript
         .stdout(contains("$ echo first").not()); // first command entry removed
 }
+
+// --- model commands ---
+
+/// model list with no providers configured prints a helpful message.
+#[test]
+fn model_list_no_providers() {
+    let tmp = tempfile::tempdir().unwrap();
+    clank()
+        .env("HOME", tmp.path())
+        .write_stdin("model list\n")
+        .assert()
+        .success()
+        .stdout(contains("No providers configured."));
+}
+
+/// model add then model list shows the new provider.
+#[test]
+fn model_add_then_list() {
+    let tmp = tempfile::tempdir().unwrap();
+    clank()
+        .env("HOME", tmp.path())
+        .write_stdin("model add anthropic --key sk-test-123\nmodel list\n")
+        .assert()
+        .success()
+        .stdout(contains("anthropic"))
+        .stdout(contains("sk-test-123").not()); // key must be redacted
+}
+
+/// model default sets the default model shown in model list.
+#[test]
+fn model_default_then_list() {
+    let tmp = tempfile::tempdir().unwrap();
+    clank()
+        .env("HOME", tmp.path())
+        .write_stdin(
+            "model add anthropic --key sk-test\nmodel default anthropic/claude-sonnet-4-5\nmodel list\n",
+        )
+        .assert()
+        .success()
+        .stdout(contains("anthropic/claude-sonnet-4-5"));
+}
