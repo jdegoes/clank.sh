@@ -1,0 +1,25 @@
+name: "Exit codes — basic"
+cases:
+  - name: true_exits_zero
+    stdin: "true"
+    expect_exit: 0
+    expect_stderr_empty: true
+
+  - name: false_exits_one
+    stdin: "false"
+    expect_exit: 1
+
+  - name: explicit_exit_42
+    stdin: "exit 42"
+    expect_exit: 42
+
+  - name: last_command_determines_exit
+    stdin: |
+      true
+      false
+    expect_exit: 1
+
+  - name: explicit_exit_zero
+    stdin: "exit 0"
+    expect_exit: 0
+    expect_stderr_empty: true

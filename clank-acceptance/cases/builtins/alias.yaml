@@ -1,0 +1,36 @@
+name: "alias"
+cases:
+  - name: define_and_invoke
+    stdin: |
+      alias greet='echo hello'
+      greet
+    expect_exit: 0
+    expect_stdout: |
+      hello
+    expect_stderr_empty: true
+
+  - name: alias_with_argument
+    stdin: |
+      alias say='echo'
+      say world
+    expect_exit: 0
+    expect_stdout: |
+      world
+    expect_stderr_empty: true
+
+  - name: list_all
+    stdin: |
+      alias foo='echo foo'
+      alias bar='echo bar'
+      alias -p
+    expect_exit: 0
+    expect_stdout_contains: "alias foo="
+    expect_stderr_empty: true
+
+  - name: show_specific
+    stdin: |
+      alias greet='echo hi'
+      alias greet
+    expect_exit: 0
+    expect_stdout_contains: "greet="
+    expect_stderr_empty: true

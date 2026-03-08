@@ -1,0 +1,19 @@
+name: "unset"
+cases:
+  - name: removes_variable
+    stdin: |
+      FOO=set
+      unset FOO
+      echo ${FOO:-gone}
+    expect_exit: 0
+    expect_stdout: |
+      gone
+    expect_stderr_empty: true
+
+  - name: removes_function
+    stdin: |
+      f() { echo func; }
+      unset -f f
+      f || echo removed
+    expect_exit: 0
+    expect_stdout_contains: "removed"

@@ -4,13 +4,105 @@
 
 clank.sh is an AI-native shell targeting `wasm32-wasip2` and native Rust. See `README.md` for full design documentation.
 
+> **WASM target deferred.** The `wasm32-wasip2` build target is blocked by `brush-core`'s hard dependencies on Unix-only system crates (`nix`, Tokio process/signal APIs, `procfs`). All implementation work targets the native build only until this is resolved. See `dev-docs/issues/open/brush-wasm-portability.md` for the full context and resolution options. Do not attempt to introduce `wasm32-wasip2` builds, `cargo-component`, Golem WIT, or `wstd` until that issue is closed.
+
 ## Build & Test
 
-_To be filled in._
+### Prerequisites
 
-## Code Conventions
+- Rust stable toolchain (1.87.0 or later). The `rust-toolchain.toml` at the workspace root pins the channel; `rustup` will install the correct version automatically on first use.
+- No other system dependencies are required for the native build.
 
-_To be filled in._
+### Build
+
+```sh
+# Build all workspace crates (native target):
+cargo build --workspace
+
+# Build only the clank binary:
+cargo build -p clank-shell
+```
+
+The compiled binary is at `target/debug/clank`.
+
+### Test
+
+The workspace has three test tiers. All three run with a single command:
+
+```sh
+cargo test --workspace
+```
+
+**Tier 1 — Unit tests** (`clank-core/src/lib.rs`, `clank-http/src/lib.rs`)
+Inline `#[cfg(test)]` modules. Run as part of `cargo test --workspace` or individually:
+```sh
+cargo test -p clank-core
+cargo test -p clank-http
+```
+
+**Tier 2 — Integration tests** (`clank-core/tests/`)
+Compiled against the `clank-core` library. Exercise the public shell API — `Shell::new`, `default_options`, `run`, `run_with_options` — without spawning a subprocess:
+```sh
+cargo test -p clank-core
+```
+
+**Tier 3 — Acceptance tests** (`clank-acceptance/`)
+Spawn the compiled `clank` binary as a subprocess and assert on stdout, stderr, and exit code. Test cases are YAML files under `clank-acceptance/cases/`. The binary must be built before running acceptance tests; `cargo test --workspace` handles this automatically.
+```sh
+# Acceptance tests only:
+cargo build -p clank-shell && cargo test -p clank-acceptance
+```
+
+To add a new acceptance test case, drop a `.yaml` file anywhere under `clank-acceptance/cases/`. No code changes required.
+
+### Lint and Format
+
+```sh
+cargo clippy --workspace --tests -- -D warnings
+cargo fmt --all --check
+```
+
+To auto-fix formatting:
+```sh
+cargo fmt --all
+```
+
+## Conventions
+
+### Code Style
+
+- Follow existing code conventions in the file you are editing.
+- Do not add unnecessary comments. Code should be self-explanatory; comments should explain *why*, not *what*.
+- Use existing libraries and utilities from the codebase before reaching for something new.
+- Never expose or log secrets or keys.
+- Never use `unwrap()` in production code paths. Use `unwrap_or_else`, `expect` with a meaningful message, or propagate the error. `unwrap()` is acceptable in tests.
+
+### Dependencies
+
+- Always ask before adding a new third-party crate. Present the crate name, version, purpose, and why nothing already in the workspace satisfies the need. Wait for explicit approval before adding it.
+
+### Tests
+
+- Never comment out, delete, or mark a test as `#[ignore]` without explicit approval.
+
+### Git
+
+- Never run `git push --force`.
+- Never create a git commit without explicit approval from the user.
+
+### Documentation and Historical Records
+
+- Never modify files under `dev-docs/plans/approved/`, `dev-docs/plans/done/`, `dev-docs/issues/closed/`, or `dev-docs/designs/approved/`. They are immutable historical records.
+
+### Technical Objectivity
+
+- Do not blindly accept that what the human says is correct. Humans make mistakes. If a proposed approach appears wrong, inefficient, or likely to lead to poor design outcomes, say so directly. Back the objection with concrete reasoning and evidence — compiler behaviour, crate API constraints, benchmarks, precedent in the codebase, or relevant prior art. Agreeing with a bad idea to be agreeable is more harmful than a respectful disagreement.
+- Prioritise technical accuracy over validation. The goal is the best outcome for the project, not the most comfortable conversation.
+
+### Handling Blockers and Plan Deviations
+
+- If you get blocked, stop immediately and ask. Do not invent or implement a workaround without explicit approval. Present: the exact point of failure, what was attempted, and why you are blocked. Wait for direction.
+- If an approved plan turns out to be wrong or incomplete — unexpected behaviour, missing information, or contradictory constraints discovered during implementation — stop immediately. Explain the issue and present the available options (new issue, plan amendment, design revision, or other). The human decides how to proceed.
 
 ## Development Workflow
 

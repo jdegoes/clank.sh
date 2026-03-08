@@ -1,0 +1,24 @@
+name: "return"
+cases:
+  - name: sets_exit_code
+    stdin: |
+      f() { return 42; }
+      f
+      echo $?
+    expect_exit: 0
+    expect_stdout: |
+      42
+    expect_stderr_empty: true
+
+  - name: exits_function_early
+    stdin: |
+      f() {
+        echo before
+        return 0
+        echo after
+      }
+      f
+    expect_exit: 0
+    expect_stdout: |
+      before
+    expect_stderr_empty: true

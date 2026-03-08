@@ -1,0 +1,8 @@
+[workspace]
+members  = ["clank-builtins", "clank-core", "clank-shell", "clank-http", "clank-acceptance", "clank-transcript", "clank-provider", "clank-ask"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"

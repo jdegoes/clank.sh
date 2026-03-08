@@ -1,0 +1,24 @@
+name: "ask"
+cases:
+  # ---------------------------------------------------------------------------
+  # Error paths — no provider call needed
+  # ---------------------------------------------------------------------------
+  - name: no_prompt_exits_2
+    stdin: |
+      ask
+    expect_exit: 2
+    expect_stderr_empty: false
+
+  - name: unknown_flag_exits_2
+    stdin: |
+      ask --unknown-flag
+    expect_exit: 2
+    expect_stderr_empty: false
+
+  - name: not_configured_exits_2
+    stdin: |
+      ask hello
+    env:
+      HOME: /tmp
+    expect_exit: 2
+    expect_stderr_empty: false

@@ -1,0 +1,33 @@
+name: "test"
+cases:
+  - name: numeric_equality
+    stdin: |
+      test 1 -eq 1 && echo yes
+    expect_exit: 0
+    expect_stdout: |
+      yes
+    expect_stderr_empty: true
+
+  - name: bracket_form
+    stdin: |
+      [ "hello" = "hello" ] && echo match
+    expect_exit: 0
+    expect_stdout: |
+      match
+    expect_stderr_empty: true
+
+  - name: directory_existence
+    stdin: |
+      [ -d /tmp ] && echo exists
+    expect_exit: 0
+    expect_stdout: |
+      exists
+    expect_stderr_empty: true
+
+  - name: string_inequality
+    stdin: |
+      [ "a" != "b" ] && echo differ
+    expect_exit: 0
+    expect_stdout: |
+      differ
+    expect_stderr_empty: true

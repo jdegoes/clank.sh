@@ -1,0 +1,13 @@
+[package]
+name    = "clank-builtins"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+brush-core        = "0.4"
+brush-builtins    = "0.1"
+clank-transcript  = { path = "../clank-transcript" }
+clank-provider    = { path = "../clank-provider" }
+clank-http        = { path = "../clank-http" }
+tokio             = { version = "1", features = ["rt"] }

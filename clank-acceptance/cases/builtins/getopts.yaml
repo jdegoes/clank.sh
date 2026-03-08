@@ -1,0 +1,10 @@
+name: "getopts"
+cases:
+  - name: parses_short_flag
+    stdin: |
+      getopts "ab:" opt -a
+      echo $opt
+    expect_exit: 0
+    expect_stdout: |
+      a
+    expect_stderr_empty: true

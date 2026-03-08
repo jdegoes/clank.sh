@@ -1,0 +1,12 @@
+name: "dot (source)"
+cases:
+  - name: sources_file_into_current_shell
+    stdin: |
+      echo 'SOURCED=yes' > /tmp/clank_test_dot_$$.sh
+      . /tmp/clank_test_dot_$$.sh
+      echo $SOURCED
+      rm /tmp/clank_test_dot_$$.sh
+    expect_exit: 0
+    expect_stdout: |
+      yes
+    expect_stderr_empty: true

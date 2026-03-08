@@ -1,0 +1,37 @@
+name: "Scripting — multi-command stdin"
+cases:
+  - name: multiple_commands_produce_all_output
+    stdin: |
+      echo first
+      echo second
+      echo third
+    expect_exit: 0
+    expect_stdout: |
+      first
+      second
+      third
+    expect_stderr_empty: true
+
+  - name: exit_code_from_explicit_exit
+    stdin: |
+      echo before
+      exit 3
+      echo after
+    expect_exit: 3
+    expect_stdout: |
+      before
+    expect_stderr_empty: true
+
+  - name: eof_without_explicit_exit_returns_zero
+    stdin: |
+      echo hello
+    expect_exit: 0
+    expect_stdout: |
+      hello
+    expect_stderr_empty: true
+
+  - name: last_command_determines_exit_on_eof
+    stdin: |
+      true
+      false
+    expect_exit: 1

@@ -1,0 +1,7 @@
+name: "true"
+cases:
+  - name: exits_zero
+    stdin: |
+      true
+    expect_exit: 0
+    expect_stderr_empty: true

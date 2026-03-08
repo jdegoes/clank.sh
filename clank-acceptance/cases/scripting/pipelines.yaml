@@ -1,0 +1,24 @@
+name: "Scripting — pipelines"
+cases:
+  - name: echo_basic
+    stdin: |
+      echo "hello world"
+    expect_exit: 0
+    expect_stdout: |
+      hello world
+    expect_stderr_empty: true
+
+  - name: pipeline_exit_code_from_last_command
+    stdin: |
+      true | false
+    expect_exit: 1
+
+  - name: multiple_commands_sequential
+    stdin: |
+      echo first
+      echo second
+    expect_exit: 0
+    expect_stdout: |
+      first
+      second
+    expect_stderr_empty: true

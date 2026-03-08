@@ -1,0 +1,257 @@
+name: "context"
+cases:
+  # ---------------------------------------------------------------------------
+  # context show — basic behaviour
+  # ---------------------------------------------------------------------------
+  - name: show_exits_zero
+    stdin: |
+      context show
+    expect_exit: 0
+    expect_stderr_empty: true
+
+  - name: show_empty_transcript_returns_nothing
+    # Fresh process, no prior commands — transcript is empty.
+    stdin: |
+      context show
+    expect_exit: 0
+    expect_stdout: ""
+    expect_stderr_empty: true
+
+  - name: show_reflects_prior_command_and_output
+    # echo hello produces Command+Output entries; context show prints them.
+    # Default format omits timestamps: <kind>: <text>
+    # stdout = echo's tee output followed by the transcript entries.
+    stdin: |
+      echo hello
+      context show
+    expect_exit: 0
+    expect_stdout: |
+      hello
+      command: echo hello
+      output: hello
+    expect_stderr_empty: true
+
+  - name: show_timestamps_flag_adds_rfc3339_prefix
+    # context show --timestamps adds [<rfc3339>] prefix to every entry.
+    # Pattern [*] matches the bracketed timestamp regardless of its value.
+    stdin: |
+      echo marker
+      context show --timestamps
+    expect_exit: 0
+    expect_stdout_line_matches:
+      - "[*] command: echo marker"
+      - "[*] output: marker"
+    expect_stderr_empty: true
+
+  - name: show_multiple_prior_commands
+    # Both prior commands and their outputs are visible in show output, in
+    # order. stdout = tee output for both echos, then the four transcript entries.
+    stdin: |
+      echo a
+      echo b
+      context show
+    expect_exit: 0
+    expect_stdout: |
+      a
+      b
+      command: echo a
+      output: a
+      command: echo b
+      output: b
+    expect_stderr_empty: true
+
+  - name: show_output_not_re_recorded
+    # context show is recorded as a Command entry but its stdout output is
+    # suppressed from the transcript. Running show twice demonstrates this:
+    # - First show: sees [Command(echo hello), Output(hello)] → prints 2 lines.
+    #   Then records Command(context show).
+    # - Second show: sees [Command(echo hello), Output(hello),
+    #   Command(context show)] → prints 3 lines.
+    # If show's output were re-recorded as Output entries, the second show
+    # would contain "output: command: echo hello" style lines. It must not.
+    stdin: |
+      echo hello
+      context show
+      context show
+    expect_exit: 0
+    expect_stdout: |
+      hello
+      command: echo hello
+      output: hello
+      command: echo hello
+      output: hello
+      command: context show
+    expect_stderr_empty: true
+
+  # ---------------------------------------------------------------------------
+  # context clear
+  # ---------------------------------------------------------------------------
+  - name: clear_exits_zero
+    stdin: |
+      context clear
+    expect_exit: 0
+    expect_stderr_empty: true
+
+  - name: clear_produces_no_output
+    stdin: |
+      context clear
+    expect_exit: 0
+    expect_stdout: ""
+    expect_stderr_empty: true
+
+  - name: clear_empties_transcript
+    # context clear is self-erasing: wipes transcript without recording itself.
+    # context show therefore sees an empty transcript and prints nothing.
+    # The only stdout is the tee output from echo a.
+    stdin: |
+      echo a
+      context clear
+      context show
+    expect_exit: 0
+    expect_stdout: |
+      a
+    expect_stderr_empty: true
+
+  - name: clear_twice_exits_zero
+    stdin: |
+      context clear
+      context clear
+    expect_exit: 0
+    expect_stderr_empty: true
+
+  # ---------------------------------------------------------------------------
+  # context trim
+  # ---------------------------------------------------------------------------
+  - name: trim_zero_exits_zero
+    stdin: |
+      context trim 0
+    expect_exit: 0
+    expect_stderr_empty: true
+
+  - name: trim_zero_produces_no_output
+    stdin: |
+      context trim 0
+    expect_exit: 0
+    expect_stdout: ""
+    expect_stderr_empty: true
+
+  - name: trim_one_exits_zero
+    stdin: |
+      context trim 1
+    expect_exit: 0
+    expect_stderr_empty: true
+
+  - name: trim_large_n_exits_zero
+    stdin: |
+      context trim 999
+    expect_exit: 0
+    expect_stderr_empty: true
+
+  - name: trim_removes_oldest_entries
+    # echo a and echo b each produce a Command+Output pair (4 entries total).
+    # trim 2 removes the two oldest: Command(echo a) and Output(a).
+    # context show then prints only the echo b entries — echo a is gone.
+    # stdout = tee output from both echos + show output for echo b only.
+    stdin: |
+      echo a
+      echo b
+      context trim 2
+      context show
+    expect_exit: 0
+    expect_stdout: |
+      a
+      b
+      command: echo b
+      output: b
+    expect_stderr_empty: true
+
+  - name: trim_zero_is_noop
+    # trim 0 does nothing. context show sees both entries for echo a.
+    # stdout = tee output from echo a + the two transcript entries.
+    stdin: |
+      echo a
+      context trim 0
+      context show
+    expect_exit: 0
+    expect_stdout: |
+      a
+      command: echo a
+      output: a
+    expect_stderr_empty: true
+
+  - name: trim_all_then_show_empty
+    # trim 999 removes all entries (self-erasing). context show sees nothing.
+    # The only stdout is the tee output from echo a.
+    stdin: |
+      echo a
+      context trim 999
+      context show
+    expect_exit: 0
+    expect_stdout: |
+      a
+    expect_stderr_empty: true
+
+  - name: trim_produces_no_stdout
+    stdin: |
+      context trim 5
+    expect_exit: 0
+    expect_stdout: ""
+    expect_stderr_empty: true
+
+  # ---------------------------------------------------------------------------
+  # Error cases
+  # ---------------------------------------------------------------------------
+  - name: trim_non_integer_exits_2
+    stdin: |
+      context trim notanumber
+    expect_exit: 2
+    expect_stderr_empty: false
+
+  - name: trim_negative_exits_2
+    stdin: |
+      context trim -1
+    expect_exit: 2
+    expect_stderr_empty: false
+
+  - name: trim_float_exits_2
+    stdin: |
+      context trim 1.5
+    expect_exit: 2
+    expect_stderr_empty: false
+
+  - name: trim_missing_argument_exits_2
+    stdin: |
+      context trim
+    expect_exit: 2
+    expect_stderr_empty: false
+
+  - name: unknown_subcommand_exits_2
+    stdin: |
+      context unknowncmd
+    expect_exit: 2
+    expect_stderr_empty: false
+
+  - name: no_subcommand_exits_2
+    stdin: |
+      context
+    expect_exit: 2
+    expect_stderr_empty: false
+
+  # ---------------------------------------------------------------------------
+  # Exit code propagation
+  # ---------------------------------------------------------------------------
+  - name: error_exit_code_propagated_via_dollar_question
+    stdin: |
+      context trim notanumber
+      echo $?
+    expect_exit: 0
+    expect_stdout_contains: "2"
+    expect_stderr_empty: false
+
+  - name: success_exit_code_is_zero_via_dollar_question
+    stdin: |
+      context show
+      echo $?
+    expect_exit: 0
+    expect_stdout_contains: "0"
+    expect_stderr_empty: true

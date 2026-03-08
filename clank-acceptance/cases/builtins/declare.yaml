@@ -1,0 +1,11 @@
+name: "declare"
+cases:
+  - name: integer_arithmetic
+    stdin: |
+      declare -i x=3
+      x+=2
+      echo $x
+    expect_exit: 0
+    expect_stdout: |
+      5
+    expect_stderr_empty: true

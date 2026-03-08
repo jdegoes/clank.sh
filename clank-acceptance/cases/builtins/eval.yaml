@@ -1,0 +1,19 @@
+name: "eval"
+cases:
+  - name: executes_string
+    stdin: |
+      eval "echo eval-works"
+    expect_exit: 0
+    expect_stdout: |
+      eval-works
+    expect_stderr_empty: true
+
+  - name: constructs_command_dynamically
+    stdin: |
+      cmd="echo"
+      arg="dynamic"
+      eval "$cmd $arg"
+    expect_exit: 0
+    expect_stdout: |
+      dynamic
+    expect_stderr_empty: true

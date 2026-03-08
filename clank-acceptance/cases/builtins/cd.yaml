@@ -1,0 +1,24 @@
+name: "cd"
+cases:
+  - name: changes_working_directory
+    stdin: |
+      cd /tmp && pwd
+    expect_exit: 0
+    expect_stdout_contains: "/tmp"
+    expect_stderr_empty: true
+
+  - name: no_arg_goes_home
+    stdin: |
+      cd && pwd
+    expect_exit: 0
+    expect_stdout_contains: "/"
+    expect_stderr_empty: true
+
+  - name: dash_returns_to_previous
+    stdin: |
+      cd /tmp
+      cd - > /dev/null
+      pwd
+    expect_exit: 0
+    expect_stdout_contains: "/"
+    expect_stderr_empty: true

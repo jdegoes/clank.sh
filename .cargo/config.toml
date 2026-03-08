@@ -1,0 +1,5 @@
+# No global [build] target override — the workspace builds native by default.
+# Per-target flags for wasm32-wasip2 are set here for when that build is attempted.
+
+[target.wasm32-wasip2]
+rustflags = ["-C", "opt-level=z", "-C", "panic=abort"]

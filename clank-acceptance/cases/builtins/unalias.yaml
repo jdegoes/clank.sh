@@ -1,0 +1,9 @@
+name: "unalias"
+cases:
+  - name: removes_alias
+    stdin: |
+      alias gone='echo gone'
+      unalias gone
+      gone || echo removed
+    expect_exit: 0
+    expect_stdout_contains: "removed"

@@ -1,0 +1,12 @@
+name: "break"
+cases:
+  - name: exits_loop_early
+    stdin: |
+      for i in 1 2 3; do
+        [ $i -eq 2 ] && break
+        echo $i
+      done
+    expect_exit: 0
+    expect_stdout: |
+      1
+    expect_stderr_empty: true

@@ -1,0 +1,16 @@
+name: "type"
+cases:
+  - name: identifies_builtin
+    stdin: |
+      type echo
+    expect_exit: 0
+    expect_stdout_contains: "builtin"
+    expect_stderr_empty: true
+
+  - name: identifies_alias
+    stdin: |
+      alias myls='ls'
+      type myls
+    expect_exit: 0
+    expect_stdout_contains: "alias"
+    expect_stderr_empty: true

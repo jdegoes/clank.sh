@@ -1,0 +1,17 @@
+name: "echo"
+cases:
+  - name: prints_string
+    stdin: |
+      echo hello
+    expect_exit: 0
+    expect_stdout: |
+      hello
+    expect_stderr_empty: true
+
+  - name: no_newline_flag
+    # echo -n suppresses the trailing newline — cannot use | block (always adds \n).
+    stdin: |
+      echo -n hello
+    expect_exit: 0
+    expect_stdout: "hello"
+    expect_stderr_empty: true

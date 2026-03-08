@@ -1,0 +1,69 @@
+name: "harness/line_match"
+cases:
+  # ---------------------------------------------------------------------------
+  # expect_stdout_line_matches — glob pattern matching against individual lines
+  #
+  # `*` matches any sequence of characters within a single line.
+  # Each pattern must match at least one complete line in stdout.
+  # ---------------------------------------------------------------------------
+  - name: exact_line_no_wildcard
+    stdin: |
+      echo hello
+    expect_exit: 0
+    expect_stdout_line_matches:
+      - "hello"
+    expect_stderr_empty: true
+
+  - name: wildcard_matches_prefix
+    stdin: |
+      echo hello world
+    expect_exit: 0
+    expect_stdout_line_matches:
+      - "hello*"
+    expect_stderr_empty: true
+
+  - name: wildcard_matches_suffix
+    stdin: |
+      echo hello world
+    expect_exit: 0
+    expect_stdout_line_matches:
+      - "*world"
+    expect_stderr_empty: true
+
+  - name: wildcard_matches_middle
+    stdin: |
+      echo hello world
+    expect_exit: 0
+    expect_stdout_line_matches:
+      - "hello*world"
+    expect_stderr_empty: true
+
+  - name: star_only_matches_any_line
+    stdin: |
+      echo anything
+    expect_exit: 0
+    expect_stdout_line_matches:
+      - "*"
+    expect_stderr_empty: true
+
+  - name: multiple_patterns_all_must_match
+    stdin: |
+      echo first
+      echo second
+    expect_exit: 0
+    expect_stdout_line_matches:
+      - "first"
+      - "second"
+    expect_stderr_empty: true
+
+  - name: brackets_around_wildcard
+    # Primary use case: matching timestamped transcript lines where the
+    # timestamp value is dynamic but the structure is fixed.
+    stdin: |
+      echo ts-test
+      context show --timestamps
+    expect_exit: 0
+    expect_stdout_line_matches:
+      - "[*] command: echo ts-test"
+      - "[*] output: ts-test"
+    expect_stderr_empty: true
