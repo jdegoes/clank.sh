@@ -1,5 +1,5 @@
 [workspace]
-members  = ["clank-builtins", "clank-core", "clank-shell", "clank-http", "clank-acceptance", "clank-transcript"]
+members  = ["clank-builtins", "clank-core", "clank-shell", "clank-http", "clank-acceptance", "clank-transcript", "clank-provider", "clank-ask"]
 resolver = "2"
 
 [workspace.package]

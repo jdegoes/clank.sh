@@ -7,11 +7,12 @@ license.workspace = true
 [dependencies]
 clank-builtins    = { path = "../clank-builtins" }
 clank-transcript  = { path = "../clank-transcript" }
+clank-ask         = { path = "../clank-ask" }
 brush-core     = "0.4"
 brush-parser   = "0.3"
 brush-builtins = "0.1"
 tokio          = { version = "1", features = ["full"] }
 
 [dev-dependencies]
-tokio  = { version = "1", features = ["rt", "macros"] }
+tokio  = { version = "1", features = ["rt", "macros", "net", "io-util", "sync"] }
 chrono = { version = "0.4", default-features = false, features = ["clock"] }

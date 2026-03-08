@@ -24,6 +24,7 @@ use clank_transcript::TranscriptEntry;
 pub fn default_options() -> CreateOptions {
     let mut builtins = default_builtins(BuiltinSet::BashMode);
     builtins.insert("context".to_owned(), clank_builtins::context_registration());
+    builtins.insert("ask".to_owned(), clank_ask::ask_registration());
     CreateOptions {
         interactive: false,
         no_profile: true,
@@ -220,6 +221,15 @@ async fn run_statement(
                 .unwrap_or_else(|e| e.into_inner())
                 .push(TranscriptEntry::output(captured.trim_end_matches('\n')));
         }
+
+        // If `ask` produced a response, record it now — after the Command
+        // entry — so the ordering in the transcript is Command then AiResponse.
+        if let Some(response) = clank_ask::take_pending_response() {
+            clank_transcript::global()
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .push(TranscriptEntry::ai_response(response));
+        }
     }
 
     Ok(result)
@@ -347,12 +357,18 @@ fn extract_flag_values(cmd: &str, rules: &[&str]) -> Vec<String> {
 /// Per the README: "`context show` and `context summarize` are
 /// transcript-inspection commands: their output is written to stdout but is
 /// not recorded back into the transcript."
+///
+/// `ask` is also excluded here because it records its response as an
+/// `AiResponse` entry directly — recording it again as `Output` would
+/// duplicate the response in the transcript.
 fn is_inspection_command(cmd: &str) -> bool {
     let trimmed = cmd.trim();
     trimmed == "context show"
         || trimmed.starts_with("context show ")
         || trimmed == "context summarize"
         || trimmed.starts_with("context summarize ")
+        || trimmed == "ask"
+        || trimmed.starts_with("ask ")
 }
 
 // ---------------------------------------------------------------------------

@@ -5,6 +5,7 @@
 //! the implementations of clank-owned shell-internal builtins.
 
 use std::io::Write as _;
+use std::sync::Arc;
 
 use brush_core::builtins::{simple_builtin, ContentType, Registration, SimpleCommand};
 use brush_core::{commands::ExecutionContext, results::ExecutionResult};
@@ -136,6 +137,11 @@ pub static MANIFEST_REGISTRY: &[CommandManifest] = &[
     },
     // subprocess: isolated execution
     CommandManifest {
+        name: "ask",
+        scope: ExecutionScope::Subprocess,
+        redaction_rules: &[],
+    },
+    CommandManifest {
         name: "cat",
         scope: ExecutionScope::Subprocess,
         redaction_rules: &[],
@@ -187,12 +193,12 @@ pub fn redaction_rules_of(name: &str) -> &'static [&'static str] {
 
 /// Implementation of the `context` shell-internal builtin.
 ///
-/// Subcommands: `show`, `clear`, `trim <n>`.
+/// Subcommands: `show`, `clear`, `trim <n>`, `summarize`.
 pub struct ContextBuiltin;
 
 impl SimpleCommand for ContextBuiltin {
     fn get_content(name: &str, content_type: ContentType) -> Result<String, brush_core::Error> {
-        let usage = format!("usage: {name} show|clear|trim <n>\n");
+        let usage = format!("usage: {name} show|clear|trim <n>|summarize\n");
         match content_type {
             ContentType::ShortUsage | ContentType::DetailedHelp | ContentType::ManPage => Ok(usage),
             ContentType::ShortDescription => Ok(format!("{name} - manage the shell transcript\n")),
@@ -221,6 +227,7 @@ impl SimpleCommand for ContextBuiltin {
         };
 
         match subcommand.as_ref() {
+            "summarize" => Ok(summarize_transcript(context)),
             "show" => {
                 let timestamps = args.any(|a| a.as_ref() == "--timestamps");
                 let transcript = clank_transcript::global();
@@ -274,13 +281,111 @@ impl SimpleCommand for ContextBuiltin {
             other => {
                 writeln!(
                     context.stderr(),
-                    "context: unknown subcommand {other:?}: expected show, clear, or trim"
+                    "context: unknown subcommand {other:?}: expected show, clear, trim, or summarize"
                 )
                 .ok();
                 Ok(ExecutionResult::from(
                     brush_core::results::ExecutionExitCode::InvalidUsage,
                 ))
             }
+        }
+    }
+}
+
+/// Implements `context summarize`: calls the configured LLM provider with the
+/// current transcript and prints the resulting summary to stdout.
+///
+/// Returns [`ExecutionResult`] directly — all error handling is done
+/// internally via stderr writes, so there is no need to propagate
+/// `brush_core::Error` up the call stack.
+fn summarize_transcript(context: ExecutionContext<'_>) -> ExecutionResult {
+    use clank_http::NativeHttpClient;
+    use clank_provider::{provider_from_config, Message, ProviderError, Role};
+
+    // Check provider configuration before reading the transcript so that a
+    // missing config is always reported as an error, even on an empty session.
+    let http = Arc::new(NativeHttpClient::new());
+    let provider = match provider_from_config(http) {
+        Ok(p) => p,
+        Err(ProviderError::NotConfigured(msg)) => {
+            writeln!(context.stderr(), "context summarize: {msg}").ok();
+            return ExecutionResult::from(brush_core::results::ExecutionExitCode::InvalidUsage);
+        }
+        Err(e) => {
+            writeln!(context.stderr(), "context summarize: {e}").ok();
+            return ExecutionResult::from(brush_core::results::ExecutionExitCode::Custom(4));
+        }
+    };
+
+    // Collect transcript text after provider validation succeeds.
+    let transcript_text = {
+        let transcript = clank_transcript::global();
+        let locked = transcript.lock().unwrap_or_else(|e| e.into_inner());
+        locked
+            .entries()
+            .map(|e| e.display_plain())
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+
+    if transcript_text.is_empty() {
+        writeln!(context.stdout(), "(transcript is empty)").ok();
+        return ExecutionResult::success();
+    }
+
+    let messages = vec![
+        Message {
+            role: Role::System,
+            content: "You are a summarization assistant. Produce a concise summary of the \
+                      following shell session transcript. Output only the summary text, \
+                      with no preamble."
+                .into(),
+        },
+        Message {
+            role: Role::User,
+            content: transcript_text,
+        },
+    ];
+
+    // Run the async provider call on a dedicated OS thread with its own
+    // single-thread tokio runtime.  brush-core uses `Handle::current().block_on`
+    // internally, so `block_in_place` on the same thread deadlocks.  A fresh
+    // thread with a fresh runtime has no entanglement with the outer runtime.
+    let complete_result = {
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("provider runtime should build");
+            let _ = tx.send(rt.block_on(provider.complete(&messages)));
+        });
+        rx.recv().unwrap_or_else(|_| {
+            Err(clank_provider::ProviderError::Transport(
+                "provider thread panicked".into(),
+            ))
+        })
+    };
+    match complete_result {
+        Ok(summary) => {
+            writeln!(context.stdout(), "{summary}").ok();
+            ExecutionResult::success()
+        }
+        Err(ProviderError::NotConfigured(msg)) => {
+            writeln!(context.stderr(), "context summarize: {msg}").ok();
+            ExecutionResult::from(brush_core::results::ExecutionExitCode::InvalidUsage)
+        }
+        Err(ProviderError::Status(401)) => {
+            writeln!(
+                context.stderr(),
+                "context summarize: authentication failed (check api key)"
+            )
+            .ok();
+            ExecutionResult::from(brush_core::results::ExecutionExitCode::InvalidUsage)
+        }
+        Err(e) => {
+            writeln!(context.stderr(), "context summarize: {e}").ok();
+            ExecutionResult::from(brush_core::results::ExecutionExitCode::Custom(4))
         }
     }
 }
@@ -322,6 +427,7 @@ mod tests {
         ("unalias", ExecutionScope::ShellInternal),
         ("wait", ExecutionScope::ShellInternal),
         // subprocess
+        ("ask", ExecutionScope::Subprocess),
         ("cat", ExecutionScope::Subprocess),
         ("curl", ExecutionScope::Subprocess),
         ("find", ExecutionScope::Subprocess),

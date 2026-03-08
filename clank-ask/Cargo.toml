@@ -1,0 +1,12 @@
+[package]
+name    = "clank-ask"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+brush-core        = "0.4"
+clank-http        = { path = "../clank-http" }
+clank-provider    = { path = "../clank-provider" }
+clank-transcript  = { path = "../clank-transcript" }
+tokio             = { version = "1", features = ["rt", "net", "io-util", "time", "sync"] }

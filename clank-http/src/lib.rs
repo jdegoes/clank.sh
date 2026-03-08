@@ -66,6 +66,18 @@ impl std::error::Error for HttpError {}
 pub trait HttpClient: Send + Sync {
     /// Issue a GET request and return the response.
     fn get(&self, url: &str) -> impl Future<Output = Result<HttpResponse, HttpError>> + Send;
+
+    /// Issue a POST request with the given headers and body, and return the response.
+    ///
+    /// `headers` is a slice of `(name, value)` pairs.  The implementation is
+    /// responsible for sending exactly the headers provided; no headers are
+    /// added automatically.
+    fn post(
+        &self,
+        url: &str,
+        headers: &[(&str, &str)],
+        body: &[u8],
+    ) -> impl Future<Output = Result<HttpResponse, HttpError>> + Send;
 }
 
 // ---------------------------------------------------------------------------
@@ -121,6 +133,35 @@ impl HttpClient for NativeHttpClient {
 
         Ok(HttpResponse { status, body })
     }
+
+    async fn post(
+        &self,
+        url: &str,
+        headers: &[(&str, &str)],
+        body: &[u8],
+    ) -> Result<HttpResponse, HttpError> {
+        let mut builder = self.inner.post(url).body(body.to_vec());
+        for (name, value) in headers {
+            builder = builder.header(*name, *value);
+        }
+        let response = builder
+            .send()
+            .await
+            .map_err(|e| HttpError::Transport(e.to_string()))?;
+
+        let status = response.status().as_u16();
+        if !response.status().is_success() {
+            return Err(HttpError::Status(status));
+        }
+
+        let body = response
+            .bytes()
+            .await
+            .map_err(|e| HttpError::Transport(e.to_string()))?
+            .to_vec();
+
+        Ok(HttpResponse { status, body })
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -143,6 +184,15 @@ impl HttpClient for WasiHttpClient {
     async fn get(&self, _url: &str) -> Result<HttpResponse, HttpError> {
         // WASM HTTP implementation is not yet available.
         // Track progress in: dev-docs/issues/open/brush-wasm-portability.md
+        todo!("WasiHttpClient is not yet implemented; see brush-wasm-portability issue")
+    }
+
+    async fn post(
+        &self,
+        _url: &str,
+        _headers: &[(&str, &str)],
+        _body: &[u8],
+    ) -> Result<HttpResponse, HttpError> {
         todo!("WasiHttpClient is not yet implemented; see brush-wasm-portability issue")
     }
 }
