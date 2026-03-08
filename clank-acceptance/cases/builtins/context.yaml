@@ -231,12 +231,6 @@ cases:
     expect_exit: 2
     expect_stderr_empty: false
 
-  - name: unknown_subcommand_summarize_not_yet_impl_exits_2
-    stdin: |
-      context summarize
-    expect_exit: 2
-    expect_stderr_empty: false
-
   - name: no_subcommand_exits_2
     stdin: |
       context

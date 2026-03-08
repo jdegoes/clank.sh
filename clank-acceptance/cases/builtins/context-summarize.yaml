@@ -1,0 +1,23 @@
+name: "context summarize"
+cases:
+  # ---------------------------------------------------------------------------
+  # context summarize — no provider configured
+  # ---------------------------------------------------------------------------
+  - name: summarize_not_configured_exits_2
+    # HOME is redirected to a directory with no ask.toml; the command must
+    # report the configuration error to stderr and exit 2.
+    stdin: |
+      context summarize
+    env:
+      HOME: /tmp
+    expect_exit: 2
+    expect_stderr_empty: false
+
+  # ---------------------------------------------------------------------------
+  # context summarize — unknown subcommand still exits 2
+  # ---------------------------------------------------------------------------
+  - name: unknown_subcommand_still_exits_2
+    stdin: |
+      context unknownsubcmd
+    expect_exit: 2
+    expect_stderr_empty: false
