@@ -5,7 +5,8 @@ cases:
       alias greet='echo hello'
       greet
     expect_exit: 0
-    expect_stdout: "hello\n"
+    expect_stdout: |
+      hello
     expect_stderr_empty: true
 
   - name: alias_with_argument
@@ -13,7 +14,8 @@ cases:
       alias say='echo'
       say world
     expect_exit: 0
-    expect_stdout: "world\n"
+    expect_stdout: |
+      world
     expect_stderr_empty: true
 
   - name: list_all

@@ -5,7 +5,8 @@ cases:
       read line <<< "hello world"
       echo $line
     expect_exit: 0
-    expect_stdout: "hello world\n"
+    expect_stdout: |
+      hello world
     expect_stderr_empty: true
 
   - name: reads_multiple_vars
@@ -13,5 +14,6 @@ cases:
       read a b c <<< "one two three"
       echo $b
     expect_exit: 0
-    expect_stdout: "two\n"
+    expect_stdout: |
+      two
     expect_stderr_empty: true

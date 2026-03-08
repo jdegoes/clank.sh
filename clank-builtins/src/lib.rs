@@ -33,12 +33,17 @@ pub enum ExecutionScope {
 
 /// Minimal command manifest entry for this foundational step.
 ///
-/// Carries the command name and its execution scope. Additional fields
-/// (authorization policy, input/output schema, help text, subcommands) are
-/// added in future work.
+/// Carries the command name, its execution scope, and the names of any
+/// arguments whose values must be scrubbed from the transcript before storage
+/// (`redaction_rules`). Empty slice means no argument-level redaction.
 pub struct CommandManifest {
     pub name: &'static str,
     pub scope: ExecutionScope,
+    /// Named flag arguments whose values must never appear in the transcript,
+    /// `ps`, logs, or provider manifests. Example: `&["--key", "--token"]`.
+    /// Heuristic regex redaction applies regardless of this field; this field
+    /// is for values that must be redacted even if they don't match any pattern.
+    pub redaction_rules: &'static [&'static str],
 }
 
 /// Static registry of all commands clank classifies by execution scope.
@@ -51,96 +56,109 @@ pub static MANIFEST_REGISTRY: &[CommandManifest] = &[
     CommandManifest {
         name: ".",
         scope: ExecutionScope::ParentShell,
+        redaction_rules: &[],
     },
     CommandManifest {
         name: "cd",
         scope: ExecutionScope::ParentShell,
+        redaction_rules: &[],
     },
     CommandManifest {
         name: "exec",
         scope: ExecutionScope::ParentShell,
+        redaction_rules: &[],
     },
     CommandManifest {
         name: "exit",
         scope: ExecutionScope::ParentShell,
+        redaction_rules: &[],
     },
     CommandManifest {
         name: "export",
         scope: ExecutionScope::ParentShell,
+        redaction_rules: &[],
     },
     CommandManifest {
         name: "source",
         scope: ExecutionScope::ParentShell,
+        redaction_rules: &[],
     },
     CommandManifest {
         name: "unset",
         scope: ExecutionScope::ParentShell,
+        redaction_rules: &[],
     },
     // shell-internal: operate on shell-owned tables
     CommandManifest {
         name: "alias",
         scope: ExecutionScope::ShellInternal,
+        redaction_rules: &[],
     },
     CommandManifest {
         name: "bg",
         scope: ExecutionScope::ShellInternal,
+        redaction_rules: &[],
     },
     CommandManifest {
         name: "context",
         scope: ExecutionScope::ShellInternal,
+        redaction_rules: &[],
     },
     CommandManifest {
         name: "fg",
         scope: ExecutionScope::ShellInternal,
-    },
-    CommandManifest {
-        name: "history",
-        scope: ExecutionScope::ShellInternal,
+        redaction_rules: &[],
     },
     CommandManifest {
         name: "jobs",
         scope: ExecutionScope::ShellInternal,
+        redaction_rules: &[],
     },
     CommandManifest {
         name: "read",
         scope: ExecutionScope::ShellInternal,
+        redaction_rules: &[],
     },
     CommandManifest {
         name: "type",
         scope: ExecutionScope::ShellInternal,
+        redaction_rules: &[],
     },
     CommandManifest {
         name: "unalias",
         scope: ExecutionScope::ShellInternal,
+        redaction_rules: &[],
     },
     CommandManifest {
         name: "wait",
         scope: ExecutionScope::ShellInternal,
+        redaction_rules: &[],
     },
     // subprocess: isolated execution
     CommandManifest {
-        name: "ask",
-        scope: ExecutionScope::Subprocess,
-    },
-    CommandManifest {
         name: "cat",
         scope: ExecutionScope::Subprocess,
+        redaction_rules: &[],
     },
     CommandManifest {
         name: "curl",
         scope: ExecutionScope::Subprocess,
+        redaction_rules: &[],
     },
     CommandManifest {
         name: "find",
         scope: ExecutionScope::Subprocess,
+        redaction_rules: &[],
     },
     CommandManifest {
         name: "grep",
         scope: ExecutionScope::Subprocess,
+        redaction_rules: &[],
     },
     CommandManifest {
         name: "ls",
         scope: ExecutionScope::Subprocess,
+        redaction_rules: &[],
     },
 ];
 
@@ -151,6 +169,16 @@ pub fn scope_of(name: &str) -> Option<ExecutionScope> {
         .iter()
         .find(|m| m.name == name)
         .map(|m| m.scope)
+}
+
+/// Returns the redaction rules for `name` if it is present in the manifest
+/// registry, or an empty slice if the command is unknown or has no rules.
+pub fn redaction_rules_of(name: &str) -> &'static [&'static str] {
+    MANIFEST_REGISTRY
+        .iter()
+        .find(|m| m.name == name)
+        .map(|m| m.redaction_rules)
+        .unwrap_or(&[])
 }
 
 // ---------------------------------------------------------------------------
@@ -194,11 +222,17 @@ impl SimpleCommand for ContextBuiltin {
 
         match subcommand.as_ref() {
             "show" => {
+                let timestamps = args.any(|a| a.as_ref() == "--timestamps");
                 let transcript = clank_transcript::global();
                 let locked = transcript.lock().unwrap_or_else(|e| e.into_inner());
                 let mut stdout = context.stdout();
                 for entry in locked.entries() {
-                    writeln!(stdout, "{entry}").ok();
+                    let line = if timestamps {
+                        entry.display_with_timestamps()
+                    } else {
+                        entry.display_plain()
+                    };
+                    writeln!(stdout, "{line}").ok();
                 }
                 Ok(ExecutionResult::success())
             }
@@ -221,10 +255,7 @@ impl SimpleCommand for ContextBuiltin {
                 };
                 match n_str.as_ref().parse::<usize>() {
                     Ok(n) => {
-                        clank_transcript::global()
-                            .lock()
-                            .unwrap_or_else(|e| e.into_inner())
-                            .trim(n);
+                        clank_transcript::global().lock().unwrap().trim(n);
                         Ok(ExecutionResult::success())
                     }
                     Err(_) => {
@@ -285,14 +316,12 @@ mod tests {
         ("bg", ExecutionScope::ShellInternal),
         ("context", ExecutionScope::ShellInternal),
         ("fg", ExecutionScope::ShellInternal),
-        ("history", ExecutionScope::ShellInternal),
         ("jobs", ExecutionScope::ShellInternal),
         ("read", ExecutionScope::ShellInternal),
         ("type", ExecutionScope::ShellInternal),
         ("unalias", ExecutionScope::ShellInternal),
         ("wait", ExecutionScope::ShellInternal),
         // subprocess
-        ("ask", ExecutionScope::Subprocess),
         ("cat", ExecutionScope::Subprocess),
         ("curl", ExecutionScope::Subprocess),
         ("find", ExecutionScope::Subprocess),

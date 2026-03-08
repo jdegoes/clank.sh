@@ -6,7 +6,8 @@ cases:
       unset FOO
       echo ${FOO:-gone}
     expect_exit: 0
-    expect_stdout: "gone\n"
+    expect_stdout: |
+      gone
     expect_stderr_empty: true
 
   - name: removes_function

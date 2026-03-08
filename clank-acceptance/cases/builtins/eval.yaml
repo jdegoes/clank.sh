@@ -4,7 +4,8 @@ cases:
     stdin: |
       eval "echo eval-works"
     expect_exit: 0
-    expect_stdout: "eval-works\n"
+    expect_stdout: |
+      eval-works
     expect_stderr_empty: true
 
   - name: constructs_command_dynamically
@@ -13,5 +14,6 @@ cases:
       arg="dynamic"
       eval "$cmd $arg"
     expect_exit: 0
-    expect_stdout: "dynamic\n"
+    expect_stdout: |
+      dynamic
     expect_stderr_empty: true

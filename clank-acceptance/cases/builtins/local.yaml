@@ -6,5 +6,7 @@ cases:
       f
       echo ${v:-outer}
     expect_exit: 0
-    expect_stdout: "inner\nouter\n"
+    expect_stdout: |
+      inner
+      outer
     expect_stderr_empty: true

@@ -6,7 +6,10 @@ cases:
       echo second
       echo third
     expect_exit: 0
-    expect_stdout: "first\nsecond\nthird\n"
+    expect_stdout: |
+      first
+      second
+      third
     expect_stderr_empty: true
 
   - name: exit_code_from_explicit_exit
@@ -15,14 +18,16 @@ cases:
       exit 3
       echo after
     expect_exit: 3
-    expect_stdout_contains: "before"
+    expect_stdout: |
+      before
     expect_stderr_empty: true
 
   - name: eof_without_explicit_exit_returns_zero
     stdin: |
       echo hello
     expect_exit: 0
-    expect_stdout: "hello\n"
+    expect_stdout: |
+      hello
     expect_stderr_empty: true
 
   - name: last_command_determines_exit_on_eof

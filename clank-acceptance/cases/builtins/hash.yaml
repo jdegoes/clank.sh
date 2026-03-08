@@ -5,5 +5,6 @@ cases:
       hash ls
       echo $?
     expect_exit: 0
-    expect_stdout: "0\n"
+    expect_stdout: |
+      0
     expect_stderr_empty: true

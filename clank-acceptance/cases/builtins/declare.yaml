@@ -6,5 +6,6 @@ cases:
       x+=2
       echo $x
     expect_exit: 0
-    expect_stdout: "5\n"
+    expect_stdout: |
+      5
     expect_stderr_empty: true

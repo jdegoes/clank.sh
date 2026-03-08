@@ -1,0 +1,100 @@
+name: "redaction/patterns"
+cases:
+  # ---------------------------------------------------------------------------
+  # Structured secret patterns — redacted in both command and output entries.
+  # The tee output (printed to terminal before recording) is NOT redacted;
+  # only the transcript entries are. context show reveals the redacted form.
+  # ---------------------------------------------------------------------------
+
+  - name: aws_access_key_redacted
+    stdin: |
+      echo AKIA1234567890ABCDEF
+      context show
+    expect_exit: 0
+    expect_stdout: |
+      AKIA1234567890ABCDEF
+      command: echo [REDACTED]
+      output: [REDACTED]
+    expect_stderr_empty: true
+
+  - name: env_var_password_redacted
+    stdin: |
+      echo DB_PASSWORD=hunter2
+      context show
+    expect_exit: 0
+    expect_stdout: |
+      DB_PASSWORD=hunter2
+      command: echo DB_PASSWORD=[REDACTED]
+      output: DB_PASSWORD=[REDACTED]
+    expect_stderr_empty: true
+
+  - name: env_var_api_token_redacted
+    stdin: |
+      echo MY_API_TOKEN=sk_live_abc123
+      context show
+    expect_exit: 0
+    expect_stdout: |
+      MY_API_TOKEN=sk_live_abc123
+      command: echo MY_API_TOKEN=[REDACTED]
+      output: MY_API_TOKEN=[REDACTED]
+    expect_stderr_empty: true
+
+  - name: toml_password_redacted
+    stdin: |
+      echo 'password = "hunter2"'
+      context show
+    expect_exit: 0
+    expect_stdout: |
+      password = "hunter2"
+      command: echo 'password = [REDACTED]'
+      output: password = [REDACTED]
+    expect_stderr_empty: true
+
+  - name: github_token_redacted
+    stdin: |
+      echo ghp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      context show
+    expect_exit: 0
+    expect_stdout: |
+      ghp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      command: echo [REDACTED]
+      output: [REDACTED]
+    expect_stderr_empty: true
+
+  - name: bearer_token_redacted
+    stdin: |
+      echo "bearer abc123def456ghi789jkl012mno345"
+      context show
+    expect_exit: 0
+    expect_stdout: |
+      bearer abc123def456ghi789jkl012mno345
+      command: echo "[REDACTED]"
+      output: [REDACTED]
+    expect_stderr_empty: true
+
+  # ---------------------------------------------------------------------------
+  # No false positives — ordinary content must not be redacted.
+  # ---------------------------------------------------------------------------
+
+  - name: normal_content_not_redacted
+    stdin: |
+      echo hello
+      context show
+    expect_exit: 0
+    expect_stdout: |
+      hello
+      command: echo hello
+      output: hello
+    expect_stderr_empty: true
+
+  - name: non_sensitive_var_name_not_redacted
+    # MYAPP= does not contain any sensitive keyword — must pass through.
+    stdin: |
+      echo MYAPP=hunter2
+      context show
+    expect_exit: 0
+    expect_stdout: |
+      MYAPP=hunter2
+      command: echo MYAPP=hunter2
+      output: MYAPP=hunter2
+    expect_stderr_empty: true

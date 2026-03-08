@@ -6,7 +6,8 @@ cases:
       f
       echo $?
     expect_exit: 0
-    expect_stdout: "42\n"
+    expect_stdout: |
+      42
     expect_stderr_empty: true
 
   - name: exits_function_early
@@ -18,5 +19,6 @@ cases:
       }
       f
     expect_exit: 0
-    expect_stdout: "before\n"
+    expect_stdout: |
+      before
     expect_stderr_empty: true

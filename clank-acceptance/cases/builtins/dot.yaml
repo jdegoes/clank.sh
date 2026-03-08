@@ -7,5 +7,6 @@ cases:
       echo $SOURCED
       rm /tmp/clank_test_dot_$$.sh
     expect_exit: 0
-    expect_stdout: "yes\n"
+    expect_stdout: |
+      yes
     expect_stderr_empty: true
